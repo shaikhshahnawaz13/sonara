@@ -60,8 +60,6 @@ class MainActivity : Activity() {
     private fun buildShell() {
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(14), dp(20), dp(10)); setBackgroundColor(bg) }
         val header = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
-        val logo = ImageView(this).apply { setImageResource(com.sonora.music.R.drawable.sonora_logo); scaleType = ImageView.ScaleType.FIT_CENTER }
-        header.addView(logo, LinearLayout.LayoutParams(dp(34), dp(34)))
         val brand = label("SONORA", 21f, Color.WHITE, true).apply { setPadding(dp(9), 0, 0, 0); letterSpacing = .08f }
         header.addView(brand)
         val live = label("  ●", 9f, cyan, true); header.addView(live)
@@ -131,7 +129,7 @@ class MainActivity : Activity() {
     }
     private fun searchPage() {
         heading("DISCOVER YOUR COLLECTION", "Search.", "Find a track or artist in your offline library.")
-        query = EditText(this).apply { hint = "  Search tracks or artists"; setHintTextColor(muted); setTextColor(Color.WHITE); textSize = 14f; singleLine = true; background = glass(); setPadding(dp(16), dp(13), dp(16), dp(13)) }
+        query = EditText(this).apply { hint = "  Search tracks or artists"; setHintTextColor(muted); setTextColor(Color.WHITE); textSize = 14f; isSingleLine = true; background = glass(); setPadding(dp(16), dp(13), dp(16), dp(13)) }
         val p = LinearLayout.LayoutParams(-1, -2); p.topMargin = dp(22); content.addView(query, p)
         query.addTextChangedListener(SimpleWatcher { renderTrackList(content, tracks.filter { it.title.contains(query.text, true) || it.artist.contains(query.text, true) }) })
         sectionTitle("Matches", "LOCAL SEARCH"); renderTrackList(content, tracks)
