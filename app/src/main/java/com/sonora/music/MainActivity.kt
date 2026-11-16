@@ -434,7 +434,7 @@ class MainActivity : Activity() {
     private fun searchPage() {
         heading("FIND YOUR SOUND", "Search", "Songs, artists, albums and moods.")
         val input = EditText(this).apply {
-            hint = "  Songs, artists, albums..."; setHintTextColor(muted); setTextColor(white); textSize = 13f; singleLine = true; background = glass(28); setPadding(dp(18), dp(14), dp(18), dp(14))
+            hint = "  Songs, artists, albums..."; setHintTextColor(muted); setTextColor(white); textSize = 13f; isSingleLine = true; background = glass(28); setPadding(dp(18), dp(14), dp(18), dp(14))
         }
         val lp = LinearLayout.LayoutParams(-1, -2); lp.topMargin = dp(20); content.addView(input, lp)
         section("Browse", "EXPLORE")
