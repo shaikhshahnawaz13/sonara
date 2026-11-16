@@ -122,52 +122,61 @@ class MiniProgress(ctx: Context) : View(ctx) {
 }
 
 class MiniPlayer(ctx: Context, private val host: Host) : LinearLayout(ctx) {
-    private val artPx = context.dp(44)
-    private val art = ArtworkView(ctx, 12f)
-    private val title = context.tv("", 15f, Theme.p.text, W_MEDIUM).oneLine()
-    private val artist = context.tv("", 13f, Theme.p.textSecondary).oneLine()
-    private val play: FrameLayout
-    private val progress = MiniProgress(ctx)
+    private val ringPx = context.dp(52)
+    val ring = RingArt(ctx, false)
+    val title = context.tv("", 15f, Theme.p.text, W_MEDIUM).oneLine()
+    val artist = context.tv("", 12.5f, Theme.p.textSecondary).oneLine()
+    val seek = SlimSeek(ctx)
+    val prev: FrameLayout
+    val play: FrameLayout
+    val next: FrameLayout
 
     init {
-        orientation = VERTICAL
-        applyNeo(context.neo(NeoStyle.RAISED, NeoLevel.STANDARD, 26f), context.dp(12), context.dp(10), context.dp(8), context.dp(12))
-        val row = LinearLayout(ctx)
-        row.orientation = HORIZONTAL
-        row.gravity = Gravity.CENTER_VERTICAL
-        row.addView(art, LayoutParams(artPx, artPx))
+        orientation = HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        applyNeo(context.neo(NeoStyle.RAISED, NeoLevel.STANDARD, 30f), context.dp(14), context.dp(10), context.dp(10), context.dp(10))
+        val rm = ring.plateMargin
+        addAligned(ring, ringPx + 2 * rm, ringPx + 2 * rm)
+
+        val divider = View(ctx)
+        divider.setBackgroundColor(Theme.blend(Theme.p.bg, Theme.p.shadow, 0.3f))
+        val dl = LayoutParams(context.dp(1), context.dp(34))
+        dl.leftMargin = context.dp(10)
+        dl.rightMargin = context.dp(10)
+        addView(divider, dl)
+
         val texts = LinearLayout(ctx)
         texts.orientation = VERTICAL
         texts.addView(title)
-        artist.setPadding(0, context.dp(2), 0, 0)
+        artist.setPadding(0, context.dp(1), 0, 0)
         texts.addView(artist)
-        val tl = LayoutParams(0, WRAP, 1f)
-        tl.leftMargin = context.dp(12)
-        row.addView(texts, tl)
-        play = context.roundButton(R.drawable.ic_play, "Play or pause", 40f, NeoLevel.SUBTLE, Theme.p.onAccent, Theme.p.accent) {
-            PlaybackHub.toggle(context)
-        }
-        val pl = play.layoutParams as LayoutParams
-        pl.rightMargin = -play.neoMargin() + context.dp(4)
-        pl.topMargin = -play.neoMargin()
-        pl.bottomMargin = -play.neoMargin()
-        row.addView(play, pl)
-        addView(row, LayoutParams(MATCH, WRAP))
-        val pr = LayoutParams(MATCH, context.dp(4))
-        pr.topMargin = context.dp(8)
-        pr.rightMargin = context.dp(4)
-        addView(progress, pr)
+        val sl = LayoutParams(MATCH, context.dp(22))
+        sl.leftMargin = -context.dp(9)
+        sl.rightMargin = -context.dp(9)
+        sl.topMargin = context.dp(2)
+        texts.addView(seek, sl)
+        addView(texts, LayoutParams(0, WRAP, 1f))
+
+        prev = context.roundButton(R.drawable.ic_skip_previous, "Previous", 34f, NeoLevel.SUBTLE, Theme.p.text) { PlaybackHub.previous(context) }
+        play = context.roundButton(R.drawable.ic_play, "Play or pause", 42f, NeoLevel.SUBTLE, Theme.p.onAccent, Theme.p.accent) { PlaybackHub.toggle(context) }
+        next = context.roundButton(R.drawable.ic_skip_next, "Next", 34f, NeoLevel.SUBTLE, Theme.p.text) { PlaybackHub.next(context) }
+        addAligned(prev, prev.layoutParams.width, prev.layoutParams.height, context.dp(6), 0, context.dp(2), 0)
+        addAligned(play, play.layoutParams.width, play.layoutParams.height, 0, 0, context.dp(2), 0)
+        addAligned(next, next.layoutParams.width, next.layoutParams.height, 0, 0, context.dp(2), 0)
+
+        seek.onCommit = { v -> PlaybackHub.seekTo(v) }
         isClickable = true
         isFocusable = true
         contentDescription = "Open player"
         setOnClickListener { host.openPlayer() }
+        unclip()
     }
 
     fun bind() {
         val t = PlaybackHub.current ?: return
         title.text = t.title
         artist.text = t.artist
-        Artwork.bind(art, t, artPx)
+        ring.bind(t, ringPx)
         val playing = PlaybackHub.state == PlayState.PLAYING || PlaybackHub.state == PlayState.PREPARING
         play.buttonIcon().setImageResource(if (playing) R.drawable.ic_pause else R.drawable.ic_play)
         play.contentDescription = if (playing) "Pause" else "Play"
@@ -176,6 +185,9 @@ class MiniPlayer(ctx: Context, private val host: Host) : LinearLayout(ctx) {
 
     fun updateProgress() {
         val d = PlaybackHub.durationMs()
-        progress.set(if (d > 0) PlaybackHub.positionMs().toFloat() / d else 0f)
+        seek.max = if (d > 0) d else 1
+        val p = PlaybackHub.positionMs()
+        seek.set(p)
+        ring.setFraction(if (d > 0) p.toFloat() / d else 0f)
     }
 }

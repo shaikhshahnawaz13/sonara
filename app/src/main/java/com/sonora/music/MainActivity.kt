@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.database.ContentObserver
 import android.graphics.Color
+import android.graphics.RectF
 import android.graphics.drawable.ColorDrawable
 import android.media.audiofx.AudioEffect
 import android.net.Uri
@@ -19,6 +20,7 @@ import android.provider.MediaStore
 import android.provider.Settings
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewOutlineProvider
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
@@ -142,7 +144,10 @@ class MainActivity : Activity(), Host {
         shell.clipChildren = false
         shell.clipToPadding = false
         rootFrame.clipChildren = false
-        contentFrame = FrameLayout(this)
+        contentFrame = SwipeFrame(this, { !playerOpen && stack.isEmpty() && !keyboardOpen }) { dir ->
+            val target = tabIndex + dir
+            if (target in 0..2) selectTab(target)
+        }
         contentFrame.clipChildren = false
         shell.addView(contentFrame, LinearLayout.LayoutParams(MATCH, 0, 1f))
 
@@ -226,9 +231,10 @@ class MainActivity : Activity(), Host {
     }
 
     private fun updateBottomBars() {
-        nav.visibility = if (keyboardOpen) View.GONE else View.VISIBLE
+        val settings = stack.lastOrNull() is SettingsScreen
+        nav.visibility = if (keyboardOpen || settings) View.GONE else View.VISIBLE
         val has = PlaybackHub.current != null
-        mini.visibility = if (!keyboardOpen && has) View.VISIBLE else View.GONE
+        mini.visibility = if (!keyboardOpen && !settings && has) View.VISIBLE else View.GONE
         if (has) mini.bind()
     }
 
@@ -261,6 +267,7 @@ class MainActivity : Activity(), Host {
         tabIndex = index
         val wasDetail = stack.isNotEmpty()
         stack.clear()
+        updateBottomBars()
         nav.select(index, true)
         endSlide()
         val width = contentFrame.width
@@ -317,6 +324,7 @@ class MainActivity : Activity(), Host {
     override fun open(screen: Screen) {
         stack.add(screen)
         show(screen)
+        updateBottomBars()
     }
 
     override fun back() {
@@ -324,40 +332,137 @@ class MainActivity : Activity(), Host {
         if (stack.isEmpty()) return
         stack.removeAt(stack.size - 1)
         show(if (stack.isEmpty()) tabs[tabIndex] else stack[stack.size - 1])
+        updateBottomBars()
+    }
+
+    private var morphAnim: android.animation.ValueAnimator? = null
+    private var morphClip: ClipShape? = null
+
+    private fun rectIn(v: View, out: RectF): RectF {
+        val a = IntArray(2)
+        val r = IntArray(2)
+        v.getLocationInWindow(a)
+        rootFrame.getLocationInWindow(r)
+        val m = v.neoMargin()
+        out.set((a[0] - r[0] + m).toFloat(), (a[1] - r[1] + m).toFloat(), (a[0] - r[0] + v.width - m).toFloat(), (a[1] - r[1] + v.height - m).toFloat())
+        return out
+    }
+
+    private fun clearPlayerTransforms(pv: View, shared: List<Shared>) {
+        for (s in shared) s.reset()
+        for (v in playerScreen.fadeGroup) { v.alpha = 1f; v.translationY = 0f }
+        playerScreen.setDockAlpha(1f)
+        pv.alpha = 1f
+        pv.translationY = 0f
+        pv.clipToOutline = false
+        pv.outlineProvider = ViewOutlineProvider.BACKGROUND
+        pv.setBackgroundColor(Theme.p.bg)
+    }
+
+    /** The mini-player grows into the full player (open) or shrinks back into it (close) as one object. */
+    private fun morph(open: Boolean) {
+        val pv = playerScreen.view
+        morphAnim?.cancel()
+        val canMorph = animationsEnabled() && mini.visibility == View.VISIBLE && mini.width > 0 && rootFrame.width > 0
+        if (!canMorph) {
+            clearPlayerTransforms(pv, emptyList())
+            pv.visibility = if (open) View.VISIBLE else View.GONE
+            return
+        }
+        val start = {
+            val miniSurface = rectIn(mini, RectF())
+            val full = RectF(0f, 0f, rootFrame.width.toFloat(), rootFrame.height.toFloat())
+            val shared = listOf(
+                Shared(playerScreen.ring, rectIn(mini.ring, RectF()), rectIn(playerScreen.ring, RectF()), false),
+                Shared(playerScreen.title, rectIn(mini.title, RectF()), rectIn(playerScreen.title, RectF()), true),
+                Shared(playerScreen.artist, rectIn(mini.artist, RectF()), rectIn(playerScreen.artist, RectF()), true),
+                Shared(playerScreen.prev, rectIn(mini.prev, RectF()), rectIn(playerScreen.prev, RectF()), false),
+                Shared(playerScreen.play, rectIn(mini.play, RectF()), rectIn(playerScreen.play, RectF()), false),
+                Shared(playerScreen.next, rectIn(mini.next, RectF()), rectIn(playerScreen.next, RectF()), false)
+            )
+            val clip = ClipShape()
+            morphClip = clip
+            pv.outlineProvider = clip
+            pv.clipToOutline = true
+            val miniRadius = dp(30).toFloat()
+            val lift = dp(28).toFloat()
+            val bgFrom = Theme.p.surfaceBottom
+            val frame = { e: Float ->
+                clip.l = miniSurface.left + (full.left - miniSurface.left) * e
+                clip.t = miniSurface.top + (full.top - miniSurface.top) * e
+                clip.r = miniSurface.right + (full.right - miniSurface.right) * e
+                clip.b = miniSurface.bottom + (full.bottom - miniSurface.bottom) * e
+                clip.radius = miniRadius * (1f - e)
+                pv.invalidateOutline()
+                pv.setBackgroundColor(Theme.blend(bgFrom, Theme.p.bg, e))
+                pv.alpha = (e / 0.3f).coerceIn(0f, 1f)
+                for (sh in shared) sh.apply(e)
+                val fade = ((e - 0.3f) / 0.7f).coerceIn(0f, 1f)
+                for (v in playerScreen.fadeGroup) { v.alpha = fade; v.translationY = lift * (1f - fade) }
+                playerScreen.setDockAlpha(fade)
+            }
+            frame(if (open) 0f else 1f)
+            if (open) pv.visibility = View.VISIBLE
+            val a = if (open) android.animation.ValueAnimator.ofFloat(0f, 1f) else android.animation.ValueAnimator.ofFloat(1f, 0f)
+            a.duration = if (open) 380L else 320L
+            a.interpolator = android.view.animation.PathInterpolator(0.25f, 0.1f, 0.2f, 1f)
+            a.addUpdateListener { frame(it.animatedValue as Float) }
+            var done = false
+            val finish = {
+                if (!done) {
+                    done = true
+                    clearPlayerTransforms(pv, shared)
+                    if (!open && !playerOpen) pv.visibility = View.GONE
+                    if (morphAnim === a) morphAnim = null
+                }
+            }
+            a.addListener(object : android.animation.AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: android.animation.Animator) { finish() }
+                override fun onAnimationCancel(animation: android.animation.Animator) { finish() }
+            })
+            morphAnim = a
+            a.start()
+        }
+        if (open) {
+            // lay the full player out first so its final positions are known, without a visible flash
+            pv.alpha = 0f
+            pv.visibility = View.VISIBLE
+            pv.viewTreeObserver.addOnPreDrawListener(object : android.view.ViewTreeObserver.OnPreDrawListener {
+                override fun onPreDraw(): Boolean {
+                    pv.viewTreeObserver.removeOnPreDrawListener(this)
+                    start()
+                    return true
+                }
+            })
+            pv.requestLayout()
+        } else {
+            start()
+        }
     }
 
     override fun openPlayer() {
-        if (PlaybackHub.current == null) return
+        if (PlaybackHub.current == null || playerOpen) return
         playerOpen = true
-        val v = playerScreen.view
-        v.animate().cancel()
-        v.visibility = View.VISIBLE
         playerScreen.refresh()
         playerScreen.onShown()
-        if (animationsEnabled()) {
-            v.translationY = rootFrame.height.toFloat()
-            v.animate().translationY(0f).setDuration(280).setInterpolator(DecelerateInterpolator(1.4f)).start()
-        } else {
-            v.translationY = 0f
-        }
+        morph(true)
     }
 
     override fun closePlayer() {
         if (!playerOpen) return
         playerOpen = false
         playerScreen.onHidden()
-        val v = playerScreen.view
-        v.animate().cancel()
-        if (animationsEnabled()) {
-            v.animate().translationY(rootFrame.height.toFloat()).setDuration(230).withEndAction {
-                if (!playerOpen) v.visibility = View.GONE
-            }.start()
-        } else {
-            v.visibility = View.GONE
-        }
+        morph(false)
     }
 
+    private var lastRecorded = -1L
+
     private fun onPlaybackChanged() {
+        val cur = PlaybackHub.current
+        if (cur != null && cur.id != lastRecorded && (PlaybackHub.state == PlayState.PLAYING || PlaybackHub.state == PlayState.PREPARING)) {
+            lastRecorded = cur.id
+            Store.recordPlayed(cur.id)
+        }
         updateBottomBars()
         if (playerOpen) playerScreen.refresh()
         for (t in tabs) t.onPlaybackChanged()

@@ -14,7 +14,7 @@ import android.widget.TextView
 /** A round button that sits raised when off and pressed-in with an accent icon when on. */
 class ToggleButton(ctx: Context, iconRes: Int, desc: String, sizeDp: Float, onClick: () -> Unit) : FrameLayout(ctx) {
     private val raised = context.neo(NeoStyle.RAISED, NeoLevel.SUBTLE, -1f)
-    private val pressedIn = NeoDrawable(context.resources.displayMetrics.density, NeoStyle.INSET, NeoLevel.SUBTLE, -1f, 0, 8f)
+    private val pressedIn = NeoDrawable(context.resources.displayMetrics.density, NeoStyle.INSET, NeoLevel.SUBTLE, -1f, 0, 12f)
     private val icon = context.iconView(iconRes, Theme.p.textSecondary)
 
     init {
@@ -38,27 +38,38 @@ class ToggleButton(ctx: Context, iconRes: Int, desc: String, sizeDp: Float, onCl
     fun setIcon(res: Int) { icon.setImageResource(res) }
 }
 
-/** Full-screen now-playing view. It slides over the app shell and is driven by PlaybackHub. */
+/** Full-screen now-playing view. MainActivity morphs the mini-player into it; PlaybackHub drives it. */
 class PlayerScreen(private val host: Host) {
     private val c = host.ctx
     private val pal = Theme.p
     private val handler = Handler(Looper.getMainLooper())
     val view = LinearLayout(c)
 
-    private val art = ArtworkView(c, 24f)
-    private val title = c.tv("", 24f, pal.text, W_BOLD).oneLine()
-    private val artist = c.tv("", 16f, pal.textSecondary).oneLine()
+    val ring = RingArt(c, true)
+    val title = c.tv("", 24f, pal.text, W_BOLD).oneLine()
+    val artist = c.tv("", 16f, pal.textSecondary).oneLine()
     private val heart: FrameLayout
     private val seek = NeoSeekBar(c)
     private val elapsed = c.tv("0:00", 13f, pal.textMuted)
     private val total = c.tv("0:00", 13f, pal.textMuted)
-    private val play: FrameLayout
+    val play: FrameLayout
+    val prev: FrameLayout
+    val next: FrameLayout
     private val shuffle: ToggleButton
     private val repeat: ToggleButton
     private val sleepChip: TextView
-    private var artPx = c.dp(320)
+    val header: View
+    private val seekBlock: View
+    private val extras: View
+    private val dock = LinearLayout(c)
+    private var ringPx = c.dp(260)
     private var showing = false
     private var lastTrackId = -1L
+
+    /** Everything that fades in as the container expands (the shared pieces are moved by the morph instead). */
+    val fadeGroup: List<View> get() = listOf(header, seekBlock, shuffle, repeat, extras)
+
+    fun setDockAlpha(a: Float) { dock.background?.alpha = (255 * a).toInt() }
 
     private val tick = object : Runnable {
         override fun run() {
@@ -71,110 +82,112 @@ class PlayerScreen(private val host: Host) {
         view.orientation = LinearLayout.VERTICAL
         view.setBackgroundColor(pal.bg)
         view.isClickable = true
-        view.setPadding(0, 0, 0, 0)
+        view.clipChildren = false
+        view.clipToPadding = false
 
-        // top bar
+        // header: collapse, brand, like
         val top = LinearLayout(c)
         top.orientation = LinearLayout.HORIZONTAL
         top.gravity = Gravity.CENTER_VERTICAL
-        top.addView(c.roundButton(R.drawable.ic_chevron_down, "Close player", 44f, NeoLevel.SUBTLE, pal.text) { host.closePlayer() })
-        val kicker = c.tv("NOW PLAYING", 12f, pal.accentText, W_BOLD)
-        kicker.letterSpacing = 0.16f
-        kicker.gravity = Gravity.CENTER
-        top.addView(kicker, LinearLayout.LayoutParams(0, WRAP, 1f))
-        val spacer = View(c)
-        top.addView(spacer, LinearLayout.LayoutParams(c.dp(44) + 2 * c.dp(8), 1))
+        top.clipChildren = false
+        val close = c.roundButton(R.drawable.ic_chevron_down, "Collapse player", 44f, NeoLevel.SUBTLE, pal.text) { host.closePlayer() }
+        top.addAligned(close, close.layoutParams.width, close.layoutParams.height, 0, 0, 0, 0)
+        val brand = LinearLayout(c)
+        brand.orientation = LinearLayout.HORIZONTAL
+        brand.gravity = Gravity.CENTER
+        brand.addView(c.logoMark(28f))
+        val word = c.tv("SONARA", 16f, pal.text, W_BOLD)
+        word.letterSpacing = 0.2f
+        word.setPadding(c.dp(8), 0, 0, 0)
+        brand.addView(word)
+        top.addView(brand, LinearLayout.LayoutParams(0, WRAP, 1f))
+        heart = c.roundButton(R.drawable.ic_heart_outline, "Like", 44f, NeoLevel.SUBTLE, pal.text) {
+            PlaybackHub.current?.let { host.toggleLike(it) }
+        }
+        top.addAligned(heart, heart.layoutParams.width, heart.layoutParams.height, 0, 0, 0, 0)
         val topLp = LinearLayout.LayoutParams(MATCH, WRAP)
-        topLp.leftMargin = c.dp(12)
-        topLp.rightMargin = c.dp(12)
+        topLp.leftMargin = c.dp(20)
+        topLp.rightMargin = c.dp(20)
+        topLp.topMargin = c.dp(8)
         view.addView(top, topLp)
+        header = top
 
-        // artwork
-        val square = FitSquare(c)
-        val frame = FrameLayout(c)
-        val fd = c.neo(NeoStyle.RAISED, NeoLevel.PROMINENT, 32f)
-        frame.applyNeo(fd, c.dp(14), c.dp(14), c.dp(14), c.dp(14))
-        frame.addView(art, FrameLayout.LayoutParams(MATCH, MATCH))
-        square.addView(frame)
-        val sqLp = LinearLayout.LayoutParams(MATCH, 0, 1f)
-        sqLp.leftMargin = c.dp(14)
-        sqLp.rightMargin = c.dp(14)
-        sqLp.topMargin = c.dp(4)
-        view.addView(square, sqLp)
+        // artwork module: round art with a cyan progress ring, centred in the free space
+        val dm = c.resources.displayMetrics
+        val visible = minOf(dm.widthPixels - c.dp(88), (dm.heightPixels * 0.40f).toInt(), c.dp(320))
+        ringPx = visible
+        val slot = FrameLayout(c)
+        slot.clipChildren = false
+        val rm = ring.plateMargin
+        slot.addView(ring, FrameLayout.LayoutParams(visible + 2 * rm, visible + 2 * rm, Gravity.CENTER))
+        view.addView(slot, LinearLayout.LayoutParams(MATCH, 0, 1f))
 
-        // title row
-        val meta = LinearLayout(c)
-        meta.orientation = LinearLayout.HORIZONTAL
-        meta.gravity = Gravity.CENTER_VERTICAL
+        // title block
         val texts = LinearLayout(c)
         texts.orientation = LinearLayout.VERTICAL
         texts.addView(title)
         artist.setPadding(0, c.dp(4), 0, 0)
         texts.addView(artist)
-        meta.addView(texts, LinearLayout.LayoutParams(0, WRAP, 1f))
-        heart = c.roundButton(R.drawable.ic_heart_outline, "Like", 44f, NeoLevel.SUBTLE, pal.text) {
-            PlaybackHub.current?.let { host.toggleLike(it) }
-        }
-        val hl = heart.layoutParams as LinearLayout.LayoutParams
-        hl.rightMargin = -heart.neoMargin()
-        meta.addView(heart, hl)
         val metaLp = LinearLayout.LayoutParams(MATCH, WRAP)
-        metaLp.leftMargin = c.dp(24)
-        metaLp.rightMargin = c.dp(24)
-        metaLp.topMargin = c.dp(8)
-        view.addView(meta, metaLp)
+        metaLp.leftMargin = c.dp(28)
+        metaLp.rightMargin = c.dp(28)
+        metaLp.topMargin = c.dp(4)
+        view.addView(texts, metaLp)
 
-        // seek
+        // seek + times
+        val sb = LinearLayout(c)
+        sb.orientation = LinearLayout.VERTICAL
+        sb.clipChildren = false
         seek.onScrub = { v -> elapsed.text = formatTime(v) }
         seek.onCommit = { v -> PlaybackHub.seekTo(v) }
-        val seekLp = LinearLayout.LayoutParams(MATCH, WRAP)
-        seekLp.leftMargin = c.dp(12)
-        seekLp.rightMargin = c.dp(12)
-        seekLp.topMargin = c.dp(8)
-        view.addView(seek, seekLp)
+        sb.addView(seek, LinearLayout.LayoutParams(MATCH, WRAP))
         val times = LinearLayout(c)
         times.orientation = LinearLayout.HORIZONTAL
         times.addView(elapsed, LinearLayout.LayoutParams(0, WRAP, 1f))
         times.addView(total)
-        val tlp = LinearLayout.LayoutParams(MATCH, WRAP)
-        tlp.leftMargin = c.dp(24)
-        tlp.rightMargin = c.dp(24)
-        view.addView(times, tlp)
+        sb.addView(times, LinearLayout.LayoutParams(MATCH, WRAP).also { it.leftMargin = c.dp(16); it.rightMargin = c.dp(16) })
+        view.addView(sb, LinearLayout.LayoutParams(MATCH, WRAP).also { it.leftMargin = c.dp(12); it.rightMargin = c.dp(12); it.topMargin = c.dp(10) })
+        seekBlock = sb
 
-        // transport
+        // control dock
         shuffle = ToggleButton(c, R.drawable.ic_shuffle, "Shuffle", 40f) { PlaybackHub.applyShuffle(!PlaybackHub.shuffle) }
         repeat = ToggleButton(c, R.drawable.ic_repeat, "Repeat", 40f) { PlaybackHub.cycleRepeat() }
-        val prev = c.roundButton(R.drawable.ic_skip_previous, "Previous", 52f, NeoLevel.SUBTLE, pal.text) { PlaybackHub.previous(c) }
-        val next = c.roundButton(R.drawable.ic_skip_next, "Next", 52f, NeoLevel.SUBTLE, pal.text) { PlaybackHub.next(c) }
-        play = c.roundButton(R.drawable.ic_play, "Play", 68f, NeoLevel.STANDARD, pal.onAccent, pal.accent) { PlaybackHub.toggle(c) }
-        val controls = LinearLayout(c)
-        controls.orientation = LinearLayout.HORIZONTAL
-        controls.gravity = Gravity.CENTER
-        val overlap = -c.dp(8)
-        controls.addView(shuffle)
-        for (b in listOf<View>(prev, play, next, repeat)) {
+        prev = c.roundButton(R.drawable.ic_skip_previous, "Previous", 48f, NeoLevel.SUBTLE, pal.text) { PlaybackHub.previous(c) }
+        next = c.roundButton(R.drawable.ic_skip_next, "Next", 48f, NeoLevel.SUBTLE, pal.text) { PlaybackHub.next(c) }
+        play = c.roundButton(R.drawable.ic_play, "Play", 62f, NeoLevel.STANDARD, pal.onAccent, pal.accent) { PlaybackHub.toggle(c) }
+        dock.orientation = LinearLayout.HORIZONTAL
+        dock.gravity = Gravity.CENTER
+        dock.applyNeo(c.neo(NeoStyle.RAISED, NeoLevel.STANDARD, -1f), c.dp(8), c.dp(8), c.dp(8), c.dp(8))
+        val seq = listOf<View>(shuffle, prev, play, next, repeat)
+        seq.forEachIndexed { i, b ->
+            val m = b.neoMargin()
             val lp = LinearLayout.LayoutParams(b.layoutParams.width, b.layoutParams.height)
-            lp.leftMargin = overlap
-            controls.addView(b, lp)
+            lp.leftMargin = (if (i == 0) 0 else c.dp(6)) - m
+            lp.rightMargin = -m
+            lp.topMargin = -m
+            lp.bottomMargin = -m
+            dock.addView(b, lp)
         }
-        val cLp = LinearLayout.LayoutParams(MATCH, WRAP)
-        cLp.topMargin = c.dp(8)
-        view.addView(controls, cLp)
+        val dm2 = dock.neoMargin()
+        val dl = LinearLayout.LayoutParams(MATCH, WRAP)
+        dl.leftMargin = c.dp(20) - dm2
+        dl.rightMargin = c.dp(20) - dm2
+        dl.topMargin = c.dp(18) - dm2
+        dl.bottomMargin = -dm2
+        view.addView(dock, dl)
 
-        // extras
-        val extras = LinearLayout(c)
-        extras.orientation = LinearLayout.HORIZONTAL
-        extras.gravity = Gravity.CENTER
+        // extras that already existed in the app
+        val ex = LinearLayout(c)
+        ex.orientation = LinearLayout.HORIZONTAL
+        ex.gravity = Gravity.CENTER
+        ex.clipChildren = false
         val eq = c.chip("Equalizer", false) { host.openEqualizer() }
         sleepChip = c.chip("Sleep timer", false) { host.showSleepTimer() }
-        extras.addView(eq)
-        val sl = LinearLayout.LayoutParams(WRAP, WRAP)
-        sl.leftMargin = c.dp(4)
-        extras.addView(sleepChip, sl)
-        val eLp = LinearLayout.LayoutParams(MATCH, WRAP)
-        eLp.topMargin = c.dp(4)
-        eLp.bottomMargin = c.dp(8)
-        view.addView(extras, eLp)
+        ex.addView(eq)
+        ex.addView(sleepChip, LinearLayout.LayoutParams(WRAP, WRAP).also { it.leftMargin = c.dp(4) })
+        view.addView(ex, LinearLayout.LayoutParams(MATCH, WRAP).also { it.topMargin = c.dp(4); it.bottomMargin = c.dp(10) })
+        extras = ex
+        view.unclip()
     }
 
     fun onShown() {
@@ -194,7 +207,7 @@ class PlayerScreen(private val host: Host) {
         artist.text = "${t.artist} · ${t.album}"
         if (t.id != lastTrackId) {
             lastTrackId = t.id
-            Artwork.bind(art, t, artPx)
+            ring.bind(t, ringPx)
             seek.setProgress(0)
         }
         val playing = PlaybackHub.state == PlayState.PLAYING || PlaybackHub.state == PlayState.PREPARING
@@ -222,6 +235,7 @@ class PlayerScreen(private val host: Host) {
         seek.max = if (d > 0) d else 1
         val p = PlaybackHub.positionMs()
         seek.setProgress(p)
+        ring.setFraction(if (d > 0) p.toFloat() / d else 0f)
         elapsed.text = formatTime(p)
         total.text = formatTime(d)
     }

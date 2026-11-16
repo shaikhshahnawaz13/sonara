@@ -182,6 +182,7 @@ object Store {
                 playlists.clear()
             }
         }
+        loadHistory()
     }
 
     fun addListener(l: () -> Unit) { if (!listeners.contains(l)) listeners.add(l) }
@@ -233,6 +234,46 @@ object Store {
         playlists.remove(name)
         savePlaylists()
     }
+
+    // ---- recently played (ids only) and recent search terms, both kept on this device
+    private val played = ArrayList<Long>()
+    private val searches = ArrayList<String>()
+
+    fun loadHistory() {
+        val p = prefs ?: return
+        played.clear(); searches.clear()
+        try {
+            val a = JSONArray(p.getString("played", "[]"))
+            for (i in 0 until a.length()) played.add(a.getLong(i))
+            val b = JSONArray(p.getString("searches", "[]"))
+            for (i in 0 until b.length()) searches.add(b.getString(i))
+        } catch (e: Exception) { played.clear(); searches.clear() }
+    }
+
+    fun recentlyPlayed(): List<Track> = played.mapNotNull { Library.trackById(it) }
+
+    fun recordPlayed(id: Long) {
+        if (played.firstOrNull() == id) return
+        played.remove(id)
+        played.add(0, id)
+        while (played.size > 12) played.removeAt(played.size - 1)
+        prefs?.edit()?.putString("played", JSONArray(played).toString())?.apply()
+    }
+
+    fun recentSearches(): List<String> = searches.toList()
+
+    fun recordSearch(term: String) {
+        val t = term.trim()
+        if (t.length < 2) return
+        searches.removeAll { it.equals(t, ignoreCase = true) }
+        searches.add(0, t)
+        while (searches.size > 8) searches.removeAt(searches.size - 1)
+        saveSearches()
+    }
+
+    fun removeSearch(term: String) { searches.remove(term); saveSearches() }
+    fun clearSearches() { searches.clear(); saveSearches() }
+    private fun saveSearches() { prefs?.edit()?.putString("searches", JSONArray(searches).toString())?.apply() }
 
     private fun savePlaylists() {
         val obj = JSONObject()

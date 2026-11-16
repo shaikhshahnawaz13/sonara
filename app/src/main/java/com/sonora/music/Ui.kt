@@ -31,6 +31,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 import android.view.animation.DecelerateInterpolator
 import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
+import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -432,7 +433,7 @@ class ArtworkView(ctx: Context, radiusDp: Float) : ImageView(ctx) {
     init {
         outlineProvider = object : ViewOutlineProvider() {
             override fun getOutline(view: View, outline: Outline) {
-                outline.setRoundRect(0, 0, view.width, view.height, radiusPx)
+                outline.setRoundRect(0, 0, view.width, view.height, minOf(radiusPx, minOf(view.width, view.height) / 2f))
             }
         }
         clipToOutline = true
@@ -604,5 +605,219 @@ class FitSquare(ctx: Context) : FrameLayout(ctx) {
         val left = (w - s) / 2
         val top = (h - s) / 2
         c.layout(left, top, left + s, top + s)
+    }
+}
+
+// ---------------------------------------------------------------- v0.7 shared pieces
+
+/** Artwork inside a soft raised plate. Used by cards, carousels and artist avatars. */
+fun Context.artFrame(t: Track?, sizeDp: Float, radiusDp: Float): FrameLayout {
+    val d = neo(NeoStyle.RAISED, NeoLevel.SUBTLE, radiusDp)
+    val f = FrameLayout(this)
+    f.applyNeo(d)
+    val px = dp(sizeDp)
+    val art = ArtworkView(this, radiusDp)
+    f.addView(art, FrameLayout.LayoutParams(px, px))
+    Artwork.bind(art, t, px)
+    return f
+}
+
+/** Places a neo child so its visible surface (not its shadow margin) lines up with its neighbours. */
+fun LinearLayout.addAligned(child: View, w: Int, h: Int, left: Int = 0, top: Int = 0, right: Int = 0, bottom: Int = 0) {
+    val m = child.neoMargin()
+    val lp = LinearLayout.LayoutParams(w, h)
+    lp.leftMargin = left - m
+    lp.topMargin = top - m
+    lp.rightMargin = right - m
+    lp.bottomMargin = bottom - m
+    addView(child, lp)
+}
+
+/** Artwork + two text lines, as used in every carousel. */
+fun Context.mediaItem(t: Track?, title: String, subtitle: String?, sizeDp: Float, radiusDp: Float, onClick: () -> Unit): LinearLayout {
+    val pal = Theme.p
+    val px = dp(sizeDp)
+    val col = LinearLayout(this)
+    col.orientation = LinearLayout.VERTICAL
+    col.clipChildren = false
+    val frame = artFrame(t, sizeDp, radiusDp)
+    col.addAligned(frame, px + 2 * frame.neoMargin(), px + 2 * frame.neoMargin())
+    val centered = radiusDp >= sizeDp / 2f
+    val tt = tv(title, 14f, pal.text, W_MEDIUM).oneLine()
+    if (centered) tt.gravity = Gravity.CENTER
+    val tl = LinearLayout.LayoutParams(px, WRAP_C)
+    tl.topMargin = dp(10)
+    col.addView(tt, tl)
+    if (subtitle != null) {
+        val st = tv(subtitle, 12f, pal.textSecondary).oneLine()
+        val sl = LinearLayout.LayoutParams(px, WRAP_C)
+        sl.topMargin = dp(2)
+        col.addView(st, sl)
+    }
+    col.isClickable = true
+    col.isFocusable = true
+    col.contentDescription = if (subtitle != null) "$title, $subtitle" else title
+    col.setOnClickListener { onClick() }
+    col.pressScale()
+    return col
+}
+
+private const val WRAP_C = ViewGroup.LayoutParams.WRAP_CONTENT
+
+/** A horizontally scrolling strip that keeps its own gestures (tab swipes ignore it). */
+fun Context.carousel(items: List<View>, gapDp: Int = 14): HorizontalScrollView {
+    val strip = LinearLayout(this)
+    strip.orientation = LinearLayout.HORIZONTAL
+    strip.clipChildren = false
+    strip.clipToPadding = false
+    items.forEachIndexed { i, v ->
+        val lp = LinearLayout.LayoutParams(WRAP_C, WRAP_C)
+        if (i > 0) lp.leftMargin = dp(gapDp)
+        strip.addView(v, lp)
+    }
+    val sc = HorizontalScrollView(this)
+    sc.isHorizontalScrollBarEnabled = false
+    sc.overScrollMode = View.OVER_SCROLL_NEVER
+    sc.clipToPadding = false
+    sc.clipChildren = false
+    sc.setPadding(dp(20), dp(14), dp(20), dp(14))
+    sc.addView(strip)
+    return sc
+}
+
+fun LinearLayout.addCarousel(sc: HorizontalScrollView, topGap: Int) {
+    val c = context
+    val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, WRAP_C)
+    lp.leftMargin = -c.dp(20)
+    lp.rightMargin = -c.dp(20)
+    lp.topMargin = topGap - c.dp(14)
+    lp.bottomMargin = -c.dp(14)
+    addView(sc, lp)
+}
+
+/** The cyan progress ring that wraps round artwork in the mini and full players. */
+class RingArt(ctx: Context, private val full: Boolean) : FrameLayout(ctx) {
+    private val art = ArtworkView(ctx, 500f)
+    private val track = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val arc = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val oval = RectF()
+    private var frac = 0f
+    private val plate = ctx.neo(NeoStyle.RAISED, if (full) NeoLevel.PROMINENT else NeoLevel.SUBTLE, -1f)
+    val plateMargin: Int get() = plate.margin
+
+    init {
+        background = plate
+        setWillNotDraw(false)
+        clipChildren = false
+        track.style = Paint.Style.STROKE
+        track.strokeCap = Paint.Cap.ROUND
+        track.color = Theme.blend(Theme.p.bg, Theme.p.shadow, 0.22f)
+        arc.style = Paint.Style.STROKE
+        arc.strokeCap = Paint.Cap.ROUND
+        arc.color = Theme.p.accent
+        addView(art, LayoutParams(MATCH_P, MATCH_P))
+    }
+
+    fun bind(t: Track?, px: Int) {
+        Artwork.bind(art, t, px)
+    }
+
+    fun setFraction(f: Float) {
+        val v = f.coerceIn(0f, 1f)
+        if (v != frac) { frac = v; invalidate() }
+    }
+
+    override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+        val w = r - l
+        val m = plate.margin
+        val inner = w - 2 * m
+        val stroke = inner * if (full) 0.045f else 0.07f
+        val gap = inner * 0.06f
+        val artSide = (inner - 2 * (stroke + gap)).toInt()
+        val off = ((w - artSide) / 2f).toInt()
+        art.measure(MeasureSpec.makeMeasureSpec(artSide, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(artSide, MeasureSpec.EXACTLY))
+        art.layout(off, off, off + artSide, off + artSide)
+        track.strokeWidth = stroke
+        arc.strokeWidth = stroke
+        val half = stroke / 2f
+        oval.set(m + half, m + half, w - m - half, (b - t) - m - half)
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val w = MeasureSpec.getSize(widthMeasureSpec)
+        setMeasuredDimension(w, w)
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        canvas.drawArc(oval, 0f, 360f, false, track)
+        if (frac > 0f) canvas.drawArc(oval, -90f, 360f * frac, false, arc)
+    }
+
+    companion object { private const val MATCH_P = ViewGroup.LayoutParams.MATCH_PARENT }
+}
+
+/** Thin seek control for the mini-player: track, cyan fill and a small raised thumb. */
+class SlimSeek(ctx: Context) : View(ctx) {
+    var max = 1
+    var onCommit: ((Int) -> Unit)? = null
+    private var value = 0
+    private var dragging = false
+    private val trackP = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val fillP = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val thumbP = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val ringP = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val rect = RectF()
+    private val pad = ctx.dp(9)
+
+    init {
+        trackP.color = Theme.blend(Theme.p.bg, Theme.p.shadow, 0.28f)
+        fillP.color = Theme.p.accent
+        thumbP.color = Theme.p.surfaceTop
+        ringP.color = Theme.blend(Theme.p.bg, Theme.p.shadow, 0.5f)
+        thumbP.setShadowLayer(ctx.dp(3f).toFloat(), 0f, ctx.dp(1f).toFloat(), Theme.blend(Theme.p.bg, Theme.p.shadow, 0.7f))
+        setLayerType(LAYER_TYPE_SOFTWARE, null)
+        contentDescription = "Seek"
+    }
+
+    fun set(v: Int) {
+        if (dragging) return
+        value = v.coerceIn(0, maxOf(1, max))
+        invalidate()
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        setMeasuredDimension(resolveSize(context.dp(120), widthMeasureSpec), context.dp(22))
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        val cy = height / 2f
+        val h = context.dp(5f).toFloat()
+        val l = pad.toFloat()
+        val r = (width - pad).toFloat()
+        rect.set(l, cy - h / 2f, r, cy + h / 2f)
+        canvas.drawRoundRect(rect, h / 2f, h / 2f, trackP)
+        val x = l + (r - l) * (if (max > 0) value.toFloat() / max else 0f)
+        rect.set(l, cy - h / 2f, maxOf(x, l + h), cy + h / 2f)
+        canvas.drawRoundRect(rect, h / 2f, h / 2f, fillP)
+        canvas.drawCircle(x, cy, context.dp(8f).toFloat(), thumbP)
+        canvas.drawCircle(x, cy, context.dp(2.5f).toFloat(), fillP)
+    }
+
+    private fun at(x: Float): Int {
+        val l = pad.toFloat()
+        val r = (width - pad).toFloat()
+        return (((x - l) / (r - l)).coerceIn(0f, 1f) * max).toInt()
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    override fun onTouchEvent(e: MotionEvent): Boolean {
+        when (e.actionMasked) {
+            MotionEvent.ACTION_DOWN -> { parent?.requestDisallowInterceptTouchEvent(true); dragging = true; value = at(e.x); invalidate() }
+            MotionEvent.ACTION_MOVE -> { value = at(e.x); invalidate() }
+            MotionEvent.ACTION_UP -> { value = at(e.x); dragging = false; onCommit?.invoke(value); invalidate(); performClick() }
+            MotionEvent.ACTION_CANCEL -> { dragging = false; invalidate() }
+        }
+        return true
     }
 }

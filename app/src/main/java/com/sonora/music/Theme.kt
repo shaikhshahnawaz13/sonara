@@ -53,7 +53,7 @@ object Theme {
         private set
 
     fun init(ctx: Context) {
-        val dark = ctx.applicationContext.getSharedPreferences("sonara_theme", Context.MODE_PRIVATE).getBoolean("dark", true)
+        val dark = ctx.applicationContext.getSharedPreferences("sonara_theme", Context.MODE_PRIVATE).getBoolean("dark", false)
         p = if (dark) darkPalette else lightPalette
     }
 
