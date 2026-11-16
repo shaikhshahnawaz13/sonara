@@ -314,7 +314,7 @@ class MainActivity : Activity(), Host {
     override fun shuffleAll() {
         val all = Library.tracks
         if (all.isEmpty()) return
-        PlaybackHub.setShuffle(true)
+        PlaybackHub.applyShuffle(true)
         PlaybackHub.playQueue(this, all, (0 until all.size).random())
     }
 

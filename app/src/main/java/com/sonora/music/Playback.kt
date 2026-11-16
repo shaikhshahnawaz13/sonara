@@ -86,7 +86,7 @@ object PlaybackHub {
     fun seekTo(ms: Int) { service?.seekTo(ms) }
     fun audioSessionId(): Int = service?.audioSession() ?: 0
 
-    fun setShuffle(on: Boolean) {
+    fun applyShuffle(on: Boolean) {
         shuffle = on
         service?.onShuffleChanged()
         notifyChanged()

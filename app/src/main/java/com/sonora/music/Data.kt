@@ -200,7 +200,7 @@ object Store {
         return nowLiked
     }
 
-    fun setHideShort(v: Boolean) {
+    fun saveHideShort(v: Boolean) {
         hideShort = v
         prefs?.edit()?.putBoolean("hide_short", v)?.apply()
     }

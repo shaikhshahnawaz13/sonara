@@ -142,7 +142,7 @@ class PlayerScreen(private val host: Host) {
         view.addView(times, tlp)
 
         // transport
-        shuffle = ToggleButton(c, R.drawable.ic_shuffle, "Shuffle", 40f) { PlaybackHub.setShuffle(!PlaybackHub.shuffle) }
+        shuffle = ToggleButton(c, R.drawable.ic_shuffle, "Shuffle", 40f) { PlaybackHub.applyShuffle(!PlaybackHub.shuffle) }
         repeat = ToggleButton(c, R.drawable.ic_repeat, "Repeat", 40f) { PlaybackHub.cycleRepeat() }
         val prev = c.roundButton(R.drawable.ic_skip_previous, "Previous", 52f, NeoLevel.SUBTLE, pal.text) { PlaybackHub.previous(c) }
         val next = c.roundButton(R.drawable.ic_skip_next, "Next", 52f, NeoLevel.SUBTLE, pal.text) { PlaybackHub.next(c) }

@@ -306,7 +306,7 @@ class CollectionScreen(
             val b = c.primaryButton("Shuffle play", R.drawable.ic_shuffle) {
                 val queue = rows.mapNotNull { it.track }
                 if (queue.isNotEmpty()) {
-                    PlaybackHub.setShuffle(true)
+                    PlaybackHub.applyShuffle(true)
                     host.playQueue(queue, (0 until queue.size).random())
                 }
             }
@@ -842,7 +842,7 @@ class SettingsScreen(host: Host) : Screen(host) {
         sw.setChecked(Store.hideShort, false)
         sw.contentDescription = "Hide clips shorter than 30 seconds"
         sw.onChange = { v ->
-            Store.setHideShort(v)
+            Store.saveHideShort(v)
             host.requestScan()
         }
         library.addView(row("Hide short clips", "Ignore audio shorter than 30 seconds", sw, { sw.performClick() }))
