@@ -1,16 +1,21 @@
-# SONORA Android
+# SONARA v0.5.0
 
-SONORA is a native Android offline music player. This milestone is **v0.3.0** and focuses on a refreshed cyan/night interface while retaining local audio scanning and playback.
+Native Android music app source.
 
-## Current features
-- Scans audio indexed by Android MediaStore
-- Lists local tracks and filters them in Search
-- Plays and pauses local audio
-- Home, Search and Library navigation
-- Cyan/night visual system, translucent layered cards and restrained transitions
-- Official SONORA SVG logo retained in `app/src/main/assets/sonora_logo.svg` and rasterized for the Android UI
+## This version
+
+This release focuses only on the bottom navigation, matching the supplied floating refractive-glass reference as closely as possible while retaining SONARA's Home, Search, and Library destinations. Other screens and their existing visual styling are intentionally unchanged in this version.
 
 ## Build
-Open this project in Android Studio and run `:app:assembleDebug`, or push to GitHub to use the Android CI workflow. The debug APK is generated at `app/build/outputs/apk/debug/app-debug.apk`.
 
-This is not v1.0 yet. Streaming catalogues, richer playback queue, artwork, background playback controls, playlists and full device testing remain future work.
+```bash
+gradle :app:assembleDebug
+```
+
+The debug APK is generated at `app/build/outputs/apk/debug/app-debug.apk`.
+
+The GitHub Actions workflow also builds and uploads the debug APK as an artifact.
+
+## Verification note
+
+The source archive was prepared, but a local Android build was not run in the packaging environment. Confirm the build through GitHub Actions before installing.
