@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "SONORA"
+rootProject.name = "SONARA"
 include(":app")

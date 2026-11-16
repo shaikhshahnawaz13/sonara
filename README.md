@@ -1,21 +1,13 @@
-# SONARA v0.5.0
+# SONARA
 
-Native Android music app source.
+An offline, native Android music player (Kotlin, classic Views, no third-party runtime dependencies) with a dark/light Neo-morphic interface.
 
-## This version
-
-This release focuses only on the bottom navigation, matching the supplied floating refractive-glass reference as closely as possible while retaining SONARA's Home, Search, and Library destinations. Other screens and their existing visual styling are intentionally unchanged in this version.
+## Structure
+- `MainActivity.kt` window, insets, navigation, permissions
+- `Theme.kt`, `NeoDrawable.kt`, `Ui.kt` design tokens and reusable components
+- `Screens.kt`, `Shell.kt`, `PlayerScreen.kt` screens, navigation bar, mini-player, player
+- `Data.kt` MediaStore library, liked songs, playlists
+- `Playback.kt` foreground playback service and shared playback state
 
 ## Build
-
-```bash
-gradle :app:assembleDebug
-```
-
-The debug APK is generated at `app/build/outputs/apk/debug/app-debug.apk`.
-
-The GitHub Actions workflow also builds and uploads the debug APK as an artifact.
-
-## Verification note
-
-The source archive was prepared, but a local Android build was not run in the packaging environment. Confirm the build through GitHub Actions before installing.
+GitHub Actions (`Android CI`) builds `app-debug.apk` and uploads it as the `sonora-debug` artifact. On failure it uploads `build-log`.

@@ -38,7 +38,20 @@ jobs:
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Build debug APK
-        run: gradle :app:assembleDebug
+        shell: bash
+        run: gradle :app:assembleDebug --console=plain 2>&1 | tee build.log
+
+      - name: Show compiler errors
+        if: failure()
+        shell: bash
+        run: grep -E "^e: |error:|FAILED|What went wrong" -A2 build.log | head -80 || true
+
+      - name: Upload build log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
