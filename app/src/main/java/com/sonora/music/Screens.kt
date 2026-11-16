@@ -57,6 +57,7 @@ abstract class Screen(val host: Host) {
             var v = built
             if (v == null) {
                 v = createView()
+                v.unclip()
                 built = v
             }
             return v
@@ -79,6 +80,9 @@ class Page(ctx: Context) {
         scroll.isVerticalScrollBarEnabled = false
         scroll.overScrollMode = View.OVER_SCROLL_NEVER
         scroll.clipToPadding = false
+        scroll.clipChildren = false
+        col.clipChildren = false
+        col.clipToPadding = false
     }
 }
 
@@ -211,6 +215,8 @@ class GroupRowView(ctx: Context) : LinearLayout(ctx) {
     init {
         orientation = HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
+        clipChildren = false
+        clipToPadding = false
         setPadding(context.dp(8), context.dp(8), context.dp(8), context.dp(8))
         minimumHeight = context.dp(64)
         isClickable = true
@@ -808,7 +814,11 @@ class SettingsScreen(host: Host) : Screen(host) {
         s.setPadding(0, c.dp(3), 0, 0)
         texts.addView(s)
         r.addView(texts, LinearLayout.LayoutParams(0, WRAP, 1f))
-        if (trailing != null) r.addView(trailing)
+        if (trailing != null) {
+            val tl = LinearLayout.LayoutParams(trailing.layoutParams?.width ?: WRAP, trailing.layoutParams?.height ?: WRAP)
+            if (trailing is NeoSwitch) tl.rightMargin = -trailing.m
+            r.addView(trailing, tl)
+        }
         if (onClick != null) {
             r.isClickable = true
             r.isFocusable = true

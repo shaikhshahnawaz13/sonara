@@ -19,9 +19,9 @@ enum class NeoStyle { RAISED, INSET }
 
 /** The only three elevation levels used anywhere in the app. */
 enum class NeoLevel(val depthDp: Float, val blurDp: Float, val marginDp: Float) {
-    SUBTLE(3f, 5f, 8f),
-    STANDARD(4f, 8f, 12f),
-    PROMINENT(5f, 10f, 15f)
+    SUBTLE(3f, 5f, 12f),
+    STANDARD(4f, 8f, 17f),
+    PROMINENT(5f, 10f, 21f)
 }
 
 private object NeoCache {

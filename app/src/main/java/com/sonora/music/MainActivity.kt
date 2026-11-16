@@ -54,6 +54,7 @@ class MainActivity : Activity(), Host {
         for (t in tabs) t.onLibraryChanged()
         for (s in stack) s.onLibraryChanged()
         if (playerOpen) playerScreen.refresh()
+        contentFrame.post { contentFrame.unclip() }
     }
 
     private val hubListener: () -> Unit = { onPlaybackChanged() }
@@ -138,7 +139,11 @@ class MainActivity : Activity(), Host {
         rootFrame.setBackgroundColor(pal.bg)
         shell = LinearLayout(this)
         shell.orientation = LinearLayout.VERTICAL
+        shell.clipChildren = false
+        shell.clipToPadding = false
+        rootFrame.clipChildren = false
         contentFrame = FrameLayout(this)
+        contentFrame.clipChildren = false
         shell.addView(contentFrame, LinearLayout.LayoutParams(MATCH, 0, 1f))
 
         mini = MiniPlayer(this, this)
@@ -230,22 +235,83 @@ class MainActivity : Activity(), Host {
     // ------------------------------------------------------------ navigation
 
     private fun show(screen: Screen) {
+        endSlide()
         contentFrame.removeAllViews()
         val v = screen.view
+        v.translationX = 0f
         (v.parent as? ViewGroup)?.removeView(v)
         v.animate().cancel()
         v.alpha = 1f
         v.translationY = 0f
         contentFrame.addView(v, FrameLayout.LayoutParams(MATCH, MATCH))
         screen.onShow()
+        v.unclip()
         v.revealIn()
     }
 
+    private var slideAnim: android.animation.ValueAnimator? = null
+
+    private fun endSlide() {
+        slideAnim?.cancel()
+        slideAnim = null
+    }
+
     override fun selectTab(index: Int) {
+        val from = tabIndex
         tabIndex = index
+        val wasDetail = stack.isNotEmpty()
         stack.clear()
         nav.select(index, true)
-        show(tabs[index])
+        endSlide()
+        val width = contentFrame.width
+        if (index == from || wasDetail || width <= 0 || contentFrame.childCount == 0 || !animationsEnabled()) {
+            show(tabs[index])
+            return
+        }
+        slideTo(tabs[index], if (index > from) 1 else -1, width)
+    }
+
+    /** Slides the new tab in from the side its position implies while the old one leaves the other way. */
+    private fun slideTo(screen: Screen, dir: Int, width: Int) {
+        val outgoing = contentFrame.getChildAt(contentFrame.childCount - 1)
+        val incoming = screen.view
+        if (outgoing === incoming) { show(screen); return }
+        (incoming.parent as? ViewGroup)?.removeView(incoming)
+        incoming.animate().cancel()
+        incoming.alpha = 1f
+        incoming.translationY = 0f
+        incoming.translationX = (dir * width).toFloat()
+        contentFrame.addView(incoming, FrameLayout.LayoutParams(MATCH, MATCH))
+        screen.onShow()
+        incoming.unclip()
+        outgoing.setLayerType(View.LAYER_TYPE_HARDWARE, null)
+        incoming.setLayerType(View.LAYER_TYPE_HARDWARE, null)
+        val a = android.animation.ValueAnimator.ofFloat(0f, 1f)
+        a.duration = SLIDE_MS
+        a.interpolator = slideInterpolator()
+        a.addUpdateListener {
+            val f = it.animatedValue as Float
+            outgoing.translationX = -dir * width * f
+            incoming.translationX = dir * width * (1f - f)
+        }
+        var done = false
+        val finish = {
+            if (!done) {
+                done = true
+                contentFrame.removeView(outgoing)
+                outgoing.translationX = 0f
+                outgoing.setLayerType(View.LAYER_TYPE_NONE, null)
+                incoming.translationX = 0f
+                incoming.setLayerType(View.LAYER_TYPE_NONE, null)
+                if (slideAnim === a) slideAnim = null
+            }
+        }
+        a.addListener(object : android.animation.AnimatorListenerAdapter() {
+            override fun onAnimationEnd(animation: android.animation.Animator) { finish() }
+            override fun onAnimationCancel(animation: android.animation.Animator) { finish() }
+        })
+        slideAnim = a
+        a.start()
     }
 
     override fun open(screen: Screen) {

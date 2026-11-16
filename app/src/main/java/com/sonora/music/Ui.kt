@@ -76,8 +76,18 @@ fun Context.iconView(res: Int, tint: Int): ImageView {
 fun Context.neo(style: NeoStyle, level: NeoLevel = NeoLevel.STANDARD, radiusDp: Float = 24f, tint: Int = 0): NeoDrawable =
     NeoDrawable(resources.displayMetrics.density, style, level, radiusDp, tint)
 
+/** Lets neo-morphic shadows of children draw past their parent padding instead of being cut into rectangles. */
+fun View.unclip() {
+    if (this is ViewGroup) {
+        clipChildren = false
+        clipToPadding = false
+        for (i in 0 until childCount) getChildAt(i).unclip()
+    }
+}
+
 fun View.applyNeo(d: NeoDrawable, l: Int = 0, t: Int = 0, r: Int = 0, b: Int = 0) {
     background = d
+    if (this is ViewGroup) { clipChildren = false; clipToPadding = false }
     setPadding(d.margin + l, d.margin + t, d.margin + r, d.margin + b)
 }
 
@@ -256,7 +266,7 @@ class NeoSwitch(ctx: Context) : View(ctx) {
     private val trackD = context.neo(NeoStyle.INSET, NeoLevel.SUBTLE, -1f)
     private val knobOff = context.neo(NeoStyle.RAISED, NeoLevel.SUBTLE, -1f)
     private val knobOn = context.neo(NeoStyle.RAISED, NeoLevel.SUBTLE, -1f, Theme.p.accent)
-    private val m = knobOff.margin
+    val m = knobOff.margin
     private val surfaceW = context.dp(56)
     private val surfaceH = context.dp(28)
     private val knobS = context.dp(22)
@@ -535,6 +545,8 @@ class TrackRowView(ctx: Context) : LinearLayout(ctx) {
     init {
         orientation = HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
+        clipChildren = false
+        clipToPadding = false
         setPadding(context.dp(8), context.dp(8), context.dp(2), context.dp(8))
         minimumHeight = context.dp(64)
         isClickable = true

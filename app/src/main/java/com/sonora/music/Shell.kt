@@ -12,6 +12,9 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 
+const val SLIDE_MS = 280L
+fun slideInterpolator(): android.view.animation.Interpolator = android.view.animation.PathInterpolator(0.2f, 0f, 0f, 1f)
+
 /** Bottom navigation: a raised bar with an inset pill that glides to the selected destination. */
 class NavBar(ctx: Context, private val onSelect: (Int) -> Unit) : LinearLayout(ctx) {
     private val labels = ArrayList<TextView>()
@@ -44,7 +47,8 @@ class NavBar(ctx: Context, private val onSelect: (Int) -> Unit) : LinearLayout(c
             item.addView(icon, LayoutParams(context.dp(24), context.dp(24)))
             val label = context.tv(def.first, 12f, Theme.p.textMuted, W_MEDIUM)
             label.setPadding(0, context.dp(3), 0, 0)
-            item.addView(label)
+            label.gravity = Gravity.CENTER
+            item.addView(label, LayoutParams(WRAP, WRAP))
             icons.add(icon)
             labels.add(label)
             addView(item, LayoutParams(0, WRAP, 1f))
@@ -59,8 +63,8 @@ class NavBar(ctx: Context, private val onSelect: (Int) -> Unit) : LinearLayout(c
         animator?.cancel()
         if (animate && context.animationsEnabled() && isAttachedToWindow) {
             val a = ValueAnimator.ofFloat(indicator, index.toFloat())
-            a.duration = 260
-            a.interpolator = android.view.animation.DecelerateInterpolator(1.6f)
+            a.duration = SLIDE_MS
+            a.interpolator = slideInterpolator()
             a.addUpdateListener { indicator = it.animatedValue as Float; invalidate() }
             animator = a
             a.start()
@@ -83,7 +87,8 @@ class NavBar(ctx: Context, private val onSelect: (Int) -> Unit) : LinearLayout(c
         val inner = width - paddingLeft - paddingRight
         val slot = inner / 3f
         val left = paddingLeft + slot * indicator
-        pill.setBounds(left.toInt(), paddingTop, (left + slot).toInt(), height - paddingBottom)
+        val gap = context.dp(3)
+        pill.setBounds((left + gap).toInt(), paddingTop, (left + slot - gap).toInt(), height - paddingBottom)
         pill.draw(canvas)
     }
 }

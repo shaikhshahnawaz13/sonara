@@ -44,7 +44,7 @@ jobs:
       - name: Show compiler errors
         if: failure()
         shell: bash
-        run: grep -E "^e:|error:|FAILED|What went wrong" -A2 build.log | head -80 || true
+        run: grep -E "^e: |error:|FAILED|What went wrong" -A2 build.log | head -80 || true
 
       - name: Upload build log
         if: failure()
