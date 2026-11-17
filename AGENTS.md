@@ -1,1 +1,0 @@
-Keep the app native Android. Avoid Jetpack Compose and third-party runtime dependencies unless deliberately introduced and tested. Preserve offline local-audio playback. Use the Neo-morphic tokens in Theme.kt / NeoDrawable.kt instead of ad-hoc shadows.

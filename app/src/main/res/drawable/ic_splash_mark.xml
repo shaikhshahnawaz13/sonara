@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Temporary M1 placeholder: a single acid-lime square. The final logo is designed separately. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="192dp"
+    android:height="192dp"
+    android:viewportWidth="192"
+    android:viewportHeight="192">
+    <path
+        android:fillColor="@color/sonara_accent"
+        android:pathData="M66,66h60v60h-60z" />
+</vector>

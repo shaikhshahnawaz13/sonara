@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.Sonara" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/sonara_background</item>
+        <item name="android:colorBackground">@color/sonara_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+    <!-- Android 12+ system splash (minSdk is 31, so the platform API is always available). -->
+    <style name="Theme.Sonara.Starting" parent="Theme.Sonara">
+        <item name="android:windowSplashScreenBackground">@color/sonara_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_mark</item>
+    </style>
+
+</resources>

@@ -1,5 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Window, splash and launcher colours only. They mirror the Compose tokens in
+     core/design/SonaraColors.kt (SonaraPalette), which remain the source of truth for the UI. -->
 <resources>
-    <color name="sonara_bg">#FFE4E9F1</color>
-    <color name="sonara_accent">#FF19D9F5</color>
-    <color name="ic_launcher_background">#FF01EDFD</color>
+    <color name="sonara_background">#101010</color>
+    <color name="sonara_accent">#C6FF00</color>
 </resources>
