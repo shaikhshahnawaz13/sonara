@@ -769,6 +769,8 @@ class SlimSeek(ctx: Context) : View(ctx) {
     private val ringP = Paint(Paint.ANTI_ALIAS_FLAG)
     private val rect = RectF()
     private val pad = ctx.dp(9)
+    var trackDp = 5f
+    var thumbDp = 8f
 
     init {
         trackP.color = Theme.blend(Theme.p.bg, Theme.p.shadow, 0.28f)
@@ -792,7 +794,7 @@ class SlimSeek(ctx: Context) : View(ctx) {
 
     override fun onDraw(canvas: Canvas) {
         val cy = height / 2f
-        val h = context.dp(5f).toFloat()
+        val h = context.dp(trackDp).toFloat()
         val l = pad.toFloat()
         val r = (width - pad).toFloat()
         rect.set(l, cy - h / 2f, r, cy + h / 2f)
@@ -800,8 +802,8 @@ class SlimSeek(ctx: Context) : View(ctx) {
         val x = l + (r - l) * (if (max > 0) value.toFloat() / max else 0f)
         rect.set(l, cy - h / 2f, maxOf(x, l + h), cy + h / 2f)
         canvas.drawRoundRect(rect, h / 2f, h / 2f, fillP)
-        canvas.drawCircle(x, cy, context.dp(8f).toFloat(), thumbP)
-        canvas.drawCircle(x, cy, context.dp(2.5f).toFloat(), fillP)
+        canvas.drawCircle(x, cy, context.dp(thumbDp).toFloat(), thumbP)
+        canvas.drawCircle(x, cy, context.dp(thumbDp * 0.32f).toFloat(), fillP)
     }
 
     private fun at(x: Float): Int {

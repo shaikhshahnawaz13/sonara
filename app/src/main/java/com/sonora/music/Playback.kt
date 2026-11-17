@@ -294,9 +294,27 @@ class PlaybackService : Service() {
         publish()
     }
 
+    private var announcedSession = 0
+
+    private fun announceSession(open: Boolean, id: Int) {
+        if (id <= 0) return
+        try {
+            val i = android.content.Intent(
+                if (open) android.media.audiofx.AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION
+                else android.media.audiofx.AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION
+            )
+            i.putExtra(android.media.audiofx.AudioEffect.EXTRA_AUDIO_SESSION, id)
+            i.putExtra(android.media.audiofx.AudioEffect.EXTRA_PACKAGE_NAME, packageName)
+            i.putExtra(android.media.audiofx.AudioEffect.EXTRA_CONTENT_TYPE, android.media.audiofx.AudioEffect.CONTENT_TYPE_MUSIC)
+            sendBroadcast(i)
+        } catch (e: Exception) { }
+    }
+
     private fun onPrepared() {
         if (PlaybackHub.state != PlayState.PREPARING) return
         prepared = true
+        val sid = audioSession()
+        if (sid > 0 && sid != announcedSession) { announcedSession = sid; announceSession(true, sid) }
         if (!requestFocus()) {
             PlaybackHub.state = PlayState.PAUSED
             publish()
@@ -451,6 +469,7 @@ class PlaybackService : Service() {
 
     private fun releasePlayer() {
         prepared = false
+        if (announcedSession > 0) { announceSession(false, announcedSession); announcedSession = 0 }
         val p = mp
         mp = null
         if (p != null) {

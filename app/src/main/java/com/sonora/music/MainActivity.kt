@@ -39,14 +39,15 @@ class MainActivity : Activity(), Host {
     private lateinit var rootFrame: FrameLayout
     private lateinit var shell: LinearLayout
     private lateinit var contentFrame: FrameLayout
-    private lateinit var mini: MiniPlayer
+    private lateinit var mini: View
+    private lateinit var deck: PlayerDeck
+    private val anchorRect = RectF()
     private lateinit var nav: NavBar
-    private lateinit var playerScreen: PlayerScreen
     private lateinit var tabs: List<Screen>
 
     private val stack = ArrayList<Screen>()
     private var tabIndex = 0
-    private var playerOpen = false
+    private val playerOpen: Boolean get() = ::deck.isInitialized && deck.target > 0f
     private var keyboardOpen = false
     private var lastErrorShown: String? = null
     private val handler = Handler(Looper.getMainLooper())
@@ -55,7 +56,7 @@ class MainActivity : Activity(), Host {
     private val refreshAll: () -> Unit = {
         for (t in tabs) t.onLibraryChanged()
         for (s in stack) s.onLibraryChanged()
-        if (playerOpen) playerScreen.refresh()
+        if (::deck.isInitialized) deck.refresh()
         contentFrame.post { contentFrame.unclip() }
     }
 
@@ -63,12 +64,6 @@ class MainActivity : Activity(), Host {
 
     private val rescan = Runnable { if (hasPermission()) startScan() }
 
-    private val miniTick = object : Runnable {
-        override fun run() {
-            if (mini.visibility == View.VISIBLE) mini.updateProgress()
-            handler.postDelayed(this, 500)
-        }
-    }
 
     // ------------------------------------------------------------ lifecycle
 
@@ -100,24 +95,16 @@ class MainActivity : Activity(), Host {
         if (hasPermission() && !Library.loadedOnce && !Library.scanning) startScan()
         refreshAll()
         onPlaybackChanged()
-        handler.post(miniTick)
     }
 
     override fun onStop() {
-        handler.removeCallbacks(miniTick)
         handler.removeCallbacks(rescan)
         observer?.let { contentResolver.unregisterContentObserver(it) }
         observer = null
         Library.removeListener(refreshAll)
         Store.removeListener(refreshAll)
         PlaybackHub.removeListener(hubListener)
-        playerScreen.onHidden()
         super.onStop()
-    }
-
-    override fun onResume() {
-        super.onResume()
-        if (playerOpen) playerScreen.onShown()
     }
 
     @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
@@ -151,14 +138,14 @@ class MainActivity : Activity(), Host {
         contentFrame.clipChildren = false
         shell.addView(contentFrame, LinearLayout.LayoutParams(MATCH, 0, 1f))
 
-        mini = MiniPlayer(this, this)
+        // Invisible slot that reserves the mini-player's place in the layout; PlayerDeck draws the player itself.
+        mini = View(this)
         mini.visibility = View.GONE
-        val mm = mini.neoMargin()
-        val miniLp = LinearLayout.LayoutParams(MATCH, WRAP)
-        miniLp.leftMargin = dp(20) - mm
-        miniLp.rightMargin = dp(20) - mm
-        miniLp.topMargin = -mm / 2
-        miniLp.bottomMargin = -mm / 2
+        val miniLp = LinearLayout.LayoutParams(MATCH, dp(72))
+        miniLp.leftMargin = dp(20)
+        miniLp.rightMargin = dp(20)
+        miniLp.topMargin = dp(10)
+        miniLp.bottomMargin = dp(8)
         shell.addView(mini, miniLp)
 
         nav = NavBar(this) { index -> selectTab(index) }
@@ -170,9 +157,8 @@ class MainActivity : Activity(), Host {
         shell.addView(nav, navLp)
 
         rootFrame.addView(shell, FrameLayout.LayoutParams(MATCH, MATCH))
-        playerScreen = PlayerScreen(this)
-        playerScreen.view.visibility = View.GONE
-        rootFrame.addView(playerScreen.view, FrameLayout.LayoutParams(MATCH, MATCH))
+        deck = PlayerDeck(this, this) { currentAnchor() }
+        rootFrame.addView(deck, FrameLayout.LayoutParams(MATCH, MATCH))
         tabs = listOf(HomeScreen(this), SearchScreen(this), LibraryScreen(this))
         setContentView(rootFrame)
 
@@ -198,7 +184,7 @@ class MainActivity : Activity(), Host {
                 keyboard = insets.systemWindowInsetBottom > insets.stableInsetBottom + dp(80)
             }
             shell.setPadding(left, top, right, bottom)
-            playerScreen.view.setPadding(left, top, right, bottom)
+            deck.setInsets(left, top, right, bottom)
             if (keyboard != keyboardOpen) {
                 keyboardOpen = keyboard
                 updateBottomBars()
@@ -234,8 +220,8 @@ class MainActivity : Activity(), Host {
         val settings = stack.lastOrNull() is SettingsScreen
         nav.visibility = if (keyboardOpen || settings) View.GONE else View.VISIBLE
         val has = PlaybackHub.current != null
-        mini.visibility = if (!keyboardOpen && !settings && has) View.VISIBLE else View.GONE
-        if (has) mini.bind()
+        mini.visibility = if (!keyboardOpen && !settings && has) View.INVISIBLE else View.GONE
+        deck.syncVisibility(!keyboardOpen && !settings)
     }
 
     // ------------------------------------------------------------ navigation
@@ -335,125 +321,22 @@ class MainActivity : Activity(), Host {
         updateBottomBars()
     }
 
-    private var morphAnim: android.animation.ValueAnimator? = null
-    private var morphClip: ClipShape? = null
-
-    private fun rectIn(v: View, out: RectF): RectF {
+    /** Where the mini-player sits right now, in the deck's own coordinates. */
+    private fun currentAnchor(): RectF? {
+        if (mini.visibility == View.GONE || mini.width == 0) return null
         val a = IntArray(2)
         val r = IntArray(2)
-        v.getLocationInWindow(a)
-        rootFrame.getLocationInWindow(r)
-        val m = v.neoMargin()
-        out.set((a[0] - r[0] + m).toFloat(), (a[1] - r[1] + m).toFloat(), (a[0] - r[0] + v.width - m).toFloat(), (a[1] - r[1] + v.height - m).toFloat())
-        return out
+        mini.getLocationInWindow(a)
+        deck.getLocationInWindow(r)
+        anchorRect.set((a[0] - r[0]).toFloat(), (a[1] - r[1]).toFloat(), (a[0] - r[0] + mini.width).toFloat(), (a[1] - r[1] + mini.height).toFloat())
+        return anchorRect
     }
 
-    private fun clearPlayerTransforms(pv: View, shared: List<Shared>) {
-        for (s in shared) s.reset()
-        for (v in playerScreen.fadeGroup) { v.alpha = 1f; v.translationY = 0f }
-        playerScreen.setDockAlpha(1f)
-        pv.alpha = 1f
-        pv.translationY = 0f
-        pv.clipToOutline = false
-        pv.outlineProvider = ViewOutlineProvider.BACKGROUND
-        pv.setBackgroundColor(Theme.p.bg)
-    }
+    fun onDeckSettled() { updateBottomBars() }
 
-    /** The mini-player grows into the full player (open) or shrinks back into it (close) as one object. */
-    private fun morph(open: Boolean) {
-        val pv = playerScreen.view
-        morphAnim?.cancel()
-        val canMorph = animationsEnabled() && mini.visibility == View.VISIBLE && mini.width > 0 && rootFrame.width > 0
-        if (!canMorph) {
-            clearPlayerTransforms(pv, emptyList())
-            pv.visibility = if (open) View.VISIBLE else View.GONE
-            return
-        }
-        val start = {
-            val miniSurface = rectIn(mini, RectF())
-            val full = RectF(0f, 0f, rootFrame.width.toFloat(), rootFrame.height.toFloat())
-            val shared = listOf(
-                Shared(playerScreen.ring, rectIn(mini.ring, RectF()), rectIn(playerScreen.ring, RectF()), false),
-                Shared(playerScreen.title, rectIn(mini.title, RectF()), rectIn(playerScreen.title, RectF()), true),
-                Shared(playerScreen.artist, rectIn(mini.artist, RectF()), rectIn(playerScreen.artist, RectF()), true),
-                Shared(playerScreen.prev, rectIn(mini.prev, RectF()), rectIn(playerScreen.prev, RectF()), false),
-                Shared(playerScreen.play, rectIn(mini.play, RectF()), rectIn(playerScreen.play, RectF()), false),
-                Shared(playerScreen.next, rectIn(mini.next, RectF()), rectIn(playerScreen.next, RectF()), false)
-            )
-            val clip = ClipShape()
-            morphClip = clip
-            pv.outlineProvider = clip
-            pv.clipToOutline = true
-            val miniRadius = dp(30).toFloat()
-            val lift = dp(28).toFloat()
-            val bgFrom = Theme.p.surfaceBottom
-            val frame = { e: Float ->
-                clip.l = miniSurface.left + (full.left - miniSurface.left) * e
-                clip.t = miniSurface.top + (full.top - miniSurface.top) * e
-                clip.r = miniSurface.right + (full.right - miniSurface.right) * e
-                clip.b = miniSurface.bottom + (full.bottom - miniSurface.bottom) * e
-                clip.radius = miniRadius * (1f - e)
-                pv.invalidateOutline()
-                pv.setBackgroundColor(Theme.blend(bgFrom, Theme.p.bg, e))
-                pv.alpha = (e / 0.3f).coerceIn(0f, 1f)
-                for (sh in shared) sh.apply(e)
-                val fade = ((e - 0.3f) / 0.7f).coerceIn(0f, 1f)
-                for (v in playerScreen.fadeGroup) { v.alpha = fade; v.translationY = lift * (1f - fade) }
-                playerScreen.setDockAlpha(fade)
-            }
-            frame(if (open) 0f else 1f)
-            if (open) pv.visibility = View.VISIBLE
-            val a = if (open) android.animation.ValueAnimator.ofFloat(0f, 1f) else android.animation.ValueAnimator.ofFloat(1f, 0f)
-            a.duration = if (open) 380L else 320L
-            a.interpolator = android.view.animation.PathInterpolator(0.25f, 0.1f, 0.2f, 1f)
-            a.addUpdateListener { frame(it.animatedValue as Float) }
-            var done = false
-            val finish = {
-                if (!done) {
-                    done = true
-                    clearPlayerTransforms(pv, shared)
-                    if (!open && !playerOpen) pv.visibility = View.GONE
-                    if (morphAnim === a) morphAnim = null
-                }
-            }
-            a.addListener(object : android.animation.AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: android.animation.Animator) { finish() }
-                override fun onAnimationCancel(animation: android.animation.Animator) { finish() }
-            })
-            morphAnim = a
-            a.start()
-        }
-        if (open) {
-            // lay the full player out first so its final positions are known, without a visible flash
-            pv.alpha = 0f
-            pv.visibility = View.VISIBLE
-            pv.viewTreeObserver.addOnPreDrawListener(object : android.view.ViewTreeObserver.OnPreDrawListener {
-                override fun onPreDraw(): Boolean {
-                    pv.viewTreeObserver.removeOnPreDrawListener(this)
-                    start()
-                    return true
-                }
-            })
-            pv.requestLayout()
-        } else {
-            start()
-        }
-    }
+    override fun openPlayer() { if (PlaybackHub.current != null) deck.expand() }
 
-    override fun openPlayer() {
-        if (PlaybackHub.current == null || playerOpen) return
-        playerOpen = true
-        playerScreen.refresh()
-        playerScreen.onShown()
-        morph(true)
-    }
-
-    override fun closePlayer() {
-        if (!playerOpen) return
-        playerOpen = false
-        playerScreen.onHidden()
-        morph(false)
-    }
+    override fun closePlayer() { deck.collapse() }
 
     private var lastRecorded = -1L
 
@@ -464,7 +347,7 @@ class MainActivity : Activity(), Host {
             Store.recordPlayed(cur.id)
         }
         updateBottomBars()
-        if (playerOpen) playerScreen.refresh()
+        deck.refresh()
         for (t in tabs) t.onPlaybackChanged()
         if (stack.isNotEmpty()) stack[stack.size - 1].onPlaybackChanged()
         val err = PlaybackHub.error
@@ -509,15 +392,24 @@ class MainActivity : Activity(), Host {
     }
 
     override fun openEqualizer() {
+        val session = PlaybackHub.audioSessionId()
+        if (PlaybackHub.current == null || session <= 0) {
+            toast("Start playing a song first, then open the equalizer")
+            return
+        }
         val i = Intent(AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL)
         i.putExtra(AudioEffect.EXTRA_PACKAGE_NAME, packageName)
         i.putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
-        val session = PlaybackHub.audioSessionId()
-        if (session > 0) i.putExtra(AudioEffect.EXTRA_AUDIO_SESSION, session)
+        i.putExtra(AudioEffect.EXTRA_AUDIO_SESSION, session)
         try {
-            startActivity(i)
+            startActivityForResult(i, 1001)
+            return
+        } catch (e: Exception) { }
+        try {
+            startActivity(Intent(Settings.ACTION_SOUND_SETTINGS))
+            toast("This phone has no equalizer app. Opened sound settings instead.")
         } catch (e: Exception) {
-            toast("No system equalizer was found on this phone")
+            toast("No equalizer is available on this phone")
         }
     }
 
