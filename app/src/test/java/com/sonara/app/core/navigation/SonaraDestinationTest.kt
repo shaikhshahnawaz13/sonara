@@ -34,6 +34,11 @@ class SonaraDestinationTest {
     }
 
     @Test
+    fun tabsRouteDoesNotCollideWithAnyDestinationRoute() {
+        assertFalse(SonaraDestination.entries.any { it.route == SonaraDestination.TABS_ROUTE })
+    }
+
+    @Test
     fun startDestinationIsPrimary() {
         assertEquals(SonaraDestination.Home, SonaraDestination.start)
         assertTrue(SonaraDestination.start.isPrimary)

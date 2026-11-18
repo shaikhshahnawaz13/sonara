@@ -31,21 +31,34 @@ object MotionTokens {
     // Durations (ms)
     const val PRESS_MS = 120
     const val SELECTION_COLOR_MS = 160
-    const val TAB_MS = 300
     const val PUSH_MS = 400
     const val POP_MS = 360
+
+    /** Tab travel: one page takes this long when starting from rest. */
+    const val TAB_TRAVEL_BASE_MS = 380
+
+    /** Each further page adds this much, so a 3-page trip is faster per page but never rushed. */
+    const val TAB_TRAVEL_EXTRA_PAGE_MS = 140
 
     // Easing curves
     /** Fast start, long soft landing. Used by every slide so paired screens share one timeline. */
     val SlideEasing: Easing = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
+
+    /**
+     * Tab travel: a soft start, a smooth middle and a slightly longer landing. Slow at both ends so
+     * pages never lurch into motion or stop abruptly.
+     */
+    val TabTravelEasing: Easing = CubicBezierEasing(0.6f, 0f, 0.25f, 1f)
 
     /** Quiet curve for small property changes (colour, press compression). */
     val StandardEasing: Easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 
     // Springs. A damping ratio of 1 is critically damped: it settles without any overshoot.
     const val SPRING_DAMPING = 1f
-    const val INDICATOR_STIFFNESS = 450f
     const val PRESS_RELEASE_STIFFNESS = 700f
+
+    /** Used when a tab tap interrupts a travelling page strip, so the existing velocity carries over. */
+    const val TAB_REDIRECT_STIFFNESS = 250f
 
     // Distances and scales
     /** How far the outgoing screen drifts, as a fraction of its width, when a screen is pushed over it. */
@@ -79,8 +92,28 @@ class SonaraMotion(val level: MotionLevel) {
 
     fun durationMs(baseMs: Int): Int = (baseMs * durationScale).roundToInt()
 
-    /** Tab-to-tab slide. Both screens must use this same spec so they stay edge to edge. */
-    fun <T> tabSpec(): FiniteAnimationSpec<T> = timed(MotionTokens.TAB_MS, MotionTokens.SlideEasing)
+    /** Travel of the tab page strip from rest across [pages] pages. */
+    fun <T> tabTravelSpec(pages: Int): FiniteAnimationSpec<T> {
+        val extraPages = pages.coerceAtLeast(1) - 1
+        return timed(
+            MotionTokens.TAB_TRAVEL_BASE_MS + extraPages * MotionTokens.TAB_TRAVEL_EXTRA_PAGE_MS,
+            MotionTokens.TabTravelEasing,
+        )
+    }
+
+    /**
+     * Travel after a tab tap interrupts a strip that is already moving. A critically damped spring
+     * honours the current velocity, so reversing direction decelerates and turns instead of stopping dead.
+     */
+    fun <T> tabRedirectSpec(): FiniteAnimationSpec<T> =
+        if (isOff) {
+            snap<T>()
+        } else {
+            spring<T>(
+                dampingRatio = MotionTokens.SPRING_DAMPING,
+                stiffness = MotionTokens.TAB_REDIRECT_STIFFNESS / (durationScale * durationScale),
+            )
+        }
 
     fun <T> pushSpec(): FiniteAnimationSpec<T> = timed(MotionTokens.PUSH_MS, MotionTokens.SlideEasing)
 
@@ -88,16 +121,6 @@ class SonaraMotion(val level: MotionLevel) {
 
     fun <T> selectionColorSpec(): FiniteAnimationSpec<T> =
         timed(MotionTokens.SELECTION_COLOR_MS, MotionTokens.StandardEasing)
-
-    /** Travel of the bottom-navigation indicator. A spring while full motion is on, so it can be interrupted. */
-    fun <T> indicatorSpec(): FiniteAnimationSpec<T> = when (level) {
-        MotionLevel.Full -> spring<T>(
-            dampingRatio = MotionTokens.SPRING_DAMPING,
-            stiffness = MotionTokens.INDICATOR_STIFFNESS,
-        )
-        MotionLevel.Reduced -> timed(MotionTokens.TAB_MS, MotionTokens.StandardEasing)
-        MotionLevel.Off -> snap<T>()
-    }
 
     /** Press compression and release. Pressing is timed, release is a non-bouncing spring. */
     fun <T> pressSpec(pressed: Boolean): FiniteAnimationSpec<T> = when {

@@ -1,8 +1,6 @@
 package com.sonara.app.core.design.components
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -22,7 +20,6 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -48,33 +45,20 @@ private val SelectedIndicatorHeight = SonaraSpacing.s4
  * Custom neo-brutalist bottom navigation: a 2dp top rule, flat cells, and an acid-lime bar over the
  * selected cell. It pads itself for the navigation-bar inset so it never sits under gesture navigation.
  *
- * The lime bar is one element that travels between cells, so a selection change reads as movement
- * instead of one bar vanishing and another appearing. The travel can be interrupted by tapping again.
+ * The lime bar is one element that travels between cells. Its position comes from [indicatorPosition], a
+ * fractional cell index supplied by the page strip, so the bar moves exactly with the pages. The lambda
+ * is read only while placing the bar, so a running animation does not recompose this component.
+ * [selectedIndex] drives the label colours and accessibility state.
  */
 @Composable
 fun SonaraBottomNavigation(
     items: List<SonaraNavItem>,
-    selectedKey: String?,
-    onSelect: (String) -> Unit,
+    selectedIndex: Int,
+    indicatorPosition: () -> Float,
+    onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = SonaraTheme.colors
-    val motion = SonaraTheme.motion
-    val selectedIndex = items.indexOfFirst { it.key == selectedKey }
-
-    // Starts at the current selection, so the bar reappearing after a pushed screen does not animate.
-    val indicatorPosition = remember { Animatable(selectedIndex.coerceAtLeast(0).toFloat()) }
-    LaunchedEffect(selectedIndex, motion) {
-        if (selectedIndex >= 0) {
-            val target = selectedIndex.toFloat()
-            if (motion.isOff) {
-                indicatorPosition.snapTo(target)
-            } else {
-                indicatorPosition.animateTo(target, motion.indicatorSpec<Float>())
-            }
-        }
-    }
-
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -97,15 +81,15 @@ fun SonaraBottomNavigation(
                     .fillMaxSize()
                     .selectableGroup(),
             ) {
-                items.forEach { item ->
+                items.forEachIndexed { index, item ->
                     NavCell(
                         label = item.label,
-                        selected = item.key == selectedKey,
-                        onClick = { onSelect(item.key) },
+                        selected = index == selectedIndex,
+                        onClick = { onSelect(index) },
                     )
                 }
             }
-            if (selectedIndex >= 0) {
+            if (items.isNotEmpty()) {
                 SelectionIndicator(
                     position = indicatorPosition,
                     count = items.size,
@@ -116,13 +100,10 @@ fun SonaraBottomNavigation(
     }
 }
 
-/**
- * The lime bar. [position] is a fractional cell index. It is read only while placing the bar, so a
- * running animation re-places it every frame without recomposing anything.
- */
+/** The lime bar. [position] is a fractional cell index, read only while placing. */
 @Composable
 private fun SelectionIndicator(
-    position: Animatable<Float, AnimationVector1D>,
+    position: () -> Float,
     count: Int,
     modifier: Modifier = Modifier,
 ) {
@@ -134,7 +115,7 @@ private fun SelectionIndicator(
                     Constraints.fixed(cellWidth.roundToInt(), SelectedIndicatorHeight.roundToPx()),
                 )
                 layout(constraints.maxWidth, placeable.height) {
-                    placeable.placeRelative((position.value * cellWidth).roundToInt(), 0)
+                    placeable.placeRelative((position() * cellWidth).roundToInt(), 0)
                 }
             }
             .background(SonaraTheme.colors.accent),
@@ -192,7 +173,8 @@ private fun SonaraBottomNavigationPreview() {
                 SonaraNavItem("playlists", "Playlists"),
                 SonaraNavItem("folders", "Folders"),
             ),
-            selectedKey = "library",
+            selectedIndex = 1,
+            indicatorPosition = { 1f },
             onSelect = {},
         )
     }
