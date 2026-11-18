@@ -16,7 +16,7 @@ android {
         minSdk = 31
         targetSdk = 36
         versionCode = 1
-        versionName = "1.0.0-m1"
+        versionName = "1.0.0-m1.1"
     }
 
     buildTypes {
@@ -64,6 +64,7 @@ ksp {
 
 dependencies {
     implementation(platform(libs.compose.bom))
+    implementation(libs.compose.animation)
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.graphics)
     implementation(libs.compose.ui.tooling.preview)

@@ -10,7 +10,8 @@ milestone by milestone against the SONARA V1.0 master specification.
 
 | Milestone | Scope | State |
 |---|---|---|
-| M1 | Foundation: Gradle, tokens, theme, navigation skeleton, Room, DataStore, permission abstraction, CI | Delivered, awaiting first CI run |
+| M1 | Foundation: Gradle, tokens, theme, navigation skeleton, Room, DataStore, permission abstraction, CI | Delivered, CI green |
+| M1.1 | Motion foundation: central tokens, directional navigation, travelling nav indicator, reduced motion | Delivered, awaiting CI run and on-device check |
 | M2 | Discovery and playback | Not started |
 | M3–M8 | Library, music management, player, advanced features, motion, QA and release | Not started |
 
@@ -46,6 +47,19 @@ GitHub Actions (`SONARA CI`) runs the same commands through the wrapper and uplo
 | `feature/*` | One package per screen area |
 
 Packages for playback, media discovery and repositories are created in the milestone that needs them.
+
+## Motion
+
+All motion numbers live in `core/animation/SonaraMotion.kt` (`MotionTokens`). Components ask
+`SonaraTheme.motion` for specs and never define their own timing. Rules:
+
+- No fades, crossfades or alpha-based screen transitions anywhere.
+- Tabs slide side by side in lockstep, in the direction of the tab index.
+- Deeper screens (Search, Settings, later details) slide in from the right over the old screen, which
+  drifts back by 25%; back reverses it.
+- The lime navigation indicator is a single element that travels between tabs.
+- Reduced motion = shorter durations and no parallax. Off = everything snaps. The in-app setting and the
+  system "remove animations" scale are combined in `app/MotionPlumbing.kt`.
 
 ## Known M1 limitations
 

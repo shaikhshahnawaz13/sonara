@@ -6,9 +6,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import com.sonara.app.R
 import com.sonara.app.core.design.SonaraTheme
 import com.sonara.app.core.navigation.SonaraApp
+import com.sonara.app.data.local.preferences.SonaraSettings
 
 class MainActivity : ComponentActivity() {
 
@@ -23,8 +26,13 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
 
+        val container = (application as SonaraApplication).container
+
         setContent {
-            SonaraTheme {
+            val settings by container.settingsRepository.settings.collectAsState(initial = SonaraSettings())
+            val motionLevel = resolveMotionLevel(settings.animationIntensity, rememberSystemAnimatorScale())
+
+            SonaraTheme(motionLevel = motionLevel) {
                 SonaraApp()
             }
         }

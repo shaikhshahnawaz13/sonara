@@ -8,7 +8,11 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
+import com.sonara.app.core.animation.LocalSonaraMotion
+import com.sonara.app.core.animation.MotionLevel
+import com.sonara.app.core.animation.SonaraMotion
 
 private val LocalSonaraColors = staticCompositionLocalOf { SonaraColors() }
 private val LocalSonaraTypography = staticCompositionLocalOf { SonaraTypography() }
@@ -24,11 +28,18 @@ object SonaraTheme {
 
     val shapes: SonaraShapes
         @Composable @ReadOnlyComposable get() = LocalSonaraShapes.current
+
+    val motion: SonaraMotion
+        @Composable @ReadOnlyComposable get() = LocalSonaraMotion.current
 }
 
 /** SONARA is dark-only (spec section 3). Material 3 is mapped onto the tokens so stock components stay on-brand. */
 @Composable
-fun SonaraTheme(content: @Composable () -> Unit) {
+fun SonaraTheme(
+    motionLevel: MotionLevel = MotionLevel.Full,
+    content: @Composable () -> Unit,
+) {
+    val motion = remember(motionLevel) { SonaraMotion(motionLevel) }
     val colors = SonaraColors()
     val typography = SonaraTypography()
     val shapes = SonaraShapes()
@@ -72,6 +83,7 @@ fun SonaraTheme(content: @Composable () -> Unit) {
         LocalSonaraColors provides colors,
         LocalSonaraTypography provides typography,
         LocalSonaraShapes provides shapes,
+        LocalSonaraMotion provides motion,
     ) {
         MaterialTheme(
             colorScheme = materialColors,

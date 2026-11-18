@@ -1,10 +1,14 @@
 package com.sonara.app.core.navigation
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -30,6 +34,7 @@ fun SonaraApp() {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val current = SonaraDestination.fromRoute(backStackEntry?.destination?.route)
+    val motion = SonaraTheme.motion
 
     Scaffold(
         containerColor = SonaraTheme.colors.background,
@@ -49,27 +54,58 @@ fun SonaraApp() {
             navController = navController,
             startDestination = SonaraDestination.start.route,
             modifier = Modifier.padding(innerPadding),
+            // Explicit on purpose: the library default is a crossfade, which SONARA never uses.
+            enterTransition = {
+                motion.enterFor(classifyNavTransition(initialState.routeOrNull(), targetState.routeOrNull(), backward = false))
+            },
+            exitTransition = {
+                motion.exitFor(classifyNavTransition(initialState.routeOrNull(), targetState.routeOrNull(), backward = false))
+            },
+            popEnterTransition = {
+                motion.enterFor(classifyNavTransition(initialState.routeOrNull(), targetState.routeOrNull(), backward = true))
+            },
+            popExitTransition = {
+                motion.exitFor(classifyNavTransition(initialState.routeOrNull(), targetState.routeOrNull(), backward = true))
+            },
         ) {
             composable(SonaraDestination.Home.route) {
-                HomeScreen(
-                    onOpenSearch = { navController.navigate(SonaraDestination.Search.route) },
-                    onOpenSettings = { navController.navigate(SonaraDestination.Settings.route) },
-                )
+                ScreenSurface {
+                    HomeScreen(
+                        onOpenSearch = { navController.navigate(SonaraDestination.Search.route) },
+                        onOpenSettings = { navController.navigate(SonaraDestination.Settings.route) },
+                    )
+                }
             }
             composable(SonaraDestination.Library.route) {
-                LibraryScreen(
-                    onOpenSearch = { navController.navigate(SonaraDestination.Search.route) },
-                )
+                ScreenSurface {
+                    LibraryScreen(
+                        onOpenSearch = { navController.navigate(SonaraDestination.Search.route) },
+                    )
+                }
             }
-            composable(SonaraDestination.Playlists.route) { PlaylistsScreen() }
-            composable(SonaraDestination.Folders.route) { FoldersScreen() }
+            composable(SonaraDestination.Playlists.route) { ScreenSurface { PlaylistsScreen() } }
+            composable(SonaraDestination.Folders.route) { ScreenSurface { FoldersScreen() } }
             composable(SonaraDestination.Search.route) {
-                SearchScreen(onBack = { navController.popBackStack() })
+                ScreenSurface { SearchScreen(onBack = { navController.popBackStack() }) }
             }
             composable(SonaraDestination.Settings.route) {
-                SettingsScreen(onBack = { navController.popBackStack() })
+                ScreenSurface { SettingsScreen(onBack = { navController.popBackStack() }) }
             }
         }
+    }
+}
+
+private fun NavBackStackEntry.routeOrNull(): String? = destination.route
+
+/**
+ * Every destination paints its own opaque background. Slides never reveal the previous screen through
+ * the new one, and nothing depends on alpha. It uses the same colour the scaffold already had, so
+ * nothing changes visually.
+ */
+@Composable
+private fun ScreenSurface(content: @Composable () -> Unit) {
+    Box(modifier = Modifier.fillMaxSize().background(SonaraTheme.colors.background)) {
+        content()
     }
 }
 

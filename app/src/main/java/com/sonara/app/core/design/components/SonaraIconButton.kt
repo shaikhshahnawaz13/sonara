@@ -1,7 +1,6 @@
 package com.sonara.app.core.design.components
 
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -19,11 +18,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
+import com.sonara.app.core.animation.MotionTokens
 import com.sonara.app.core.design.SonaraSizes
 import com.sonara.app.core.design.SonaraTheme
-
-private const val PRESSED_SCALE = 0.92f
-private const val PRESS_DURATION_MS = 120
 
 /**
  * Icon-only action with a 48dp touch target and a brief press compression.
@@ -39,9 +36,10 @@ fun SonaraIconButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
+    val motion = SonaraTheme.motion
     val scale by animateFloatAsState(
-        targetValue = if (pressed) PRESSED_SCALE else 1f,
-        animationSpec = tween(durationMillis = PRESS_DURATION_MS),
+        targetValue = if (pressed) MotionTokens.PRESS_SCALE else 1f,
+        animationSpec = motion.pressSpec<Float>(pressed),
         label = "iconButtonPress",
     )
     val colors = SonaraTheme.colors
