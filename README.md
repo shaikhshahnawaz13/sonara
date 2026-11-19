@@ -13,10 +13,11 @@ milestone by milestone against the SONARA V1.0 master specification.
 | M1 | Foundation: Gradle, tokens, theme, navigation skeleton, Room, DataStore, permission abstraction, CI | Delivered, CI green |
 | M1.1 | Motion foundation: central tokens, push/pop navigation, travelling nav indicator, reduced motion | Delivered |
 | M1.2 | Tabs as one continuous page strip; indicator driven by the strip | Delivered, verified on device |
-| M2 | Discovery and playback: permissions, MediaStore scan, Room cache, Media3 service, notification and media controls | Delivered, awaiting CI run and on-device check |
-| M3–M8 | Library, music management, player, advanced features, motion, QA and release | Not started |
+| M2 | Discovery and playback: permissions, MediaStore scan, Room cache, Media3 service, notification and media controls | Delivered, verified on device (Bluetooth disconnect untested) |
+| M3 | Library and browsing: Home, Library, Search, Folders, album/artist/genre/folder details | Delivered, awaiting CI run and on-device check |
+| M4–M8 | Music management, player, advanced features, motion, QA and release | Not started |
 
-Every screen other than the navigation shell is an honest placeholder that says which milestone builds it.
+Screens that are not built yet (Playlists, Settings) are honest placeholders that say which milestone builds them.
 
 ## Requirements
 
@@ -48,7 +49,7 @@ GitHub Actions (`SONARA CI`) runs the same commands through the wrapper and uplo
 | `data/media` | MediaStore scanner, metadata normaliser, artwork loader, scan marker |
 | `data/repository` | `LibraryRepository` (scan, diff, Room cache, change observer) |
 | `playback` | `PlaybackService` (ExoPlayer + MediaSession), `PlaybackController` (MediaController client), persistence and queue restore |
-| `feature/*` | One package per screen area |
+| `feature/*` | One package per screen area (`home`, `library`, `search`, `folders`, `detail`, plus `common` for shared ViewModel and playback-action helpers) |
 
 ## M2: discovery and playback
 
@@ -63,8 +64,23 @@ GitHub Actions (`SONARA CI`) runs the same commands through the wrapper and uplo
   playback does not depend on any screen. Controllers send track ids; the service resolves them from Room.
 - **Persistence**: queue, current track, position, shuffle and repeat are saved to Room and restored (paused) when
   the service starts; tracks deleted in the meantime are dropped.
-- **Temporary UI**: the Library tab carries an "M2 PLAYBACK CHECK" panel so real discovery and playback can be
-  exercised before the Library (M3) and Player (M5) screens exist. It is removed when those are built.
+- **Temporary UI**: M2 shipped with a playback-check panel on the Library tab; M3 removed it in favour of the real Library screens.
+
+## M3: library and browsing
+
+- **Home**: real counts, Continue Listening (from play history recorded by the playback service after 5 s of
+  real playback), Recently Added and Quick Access. Empty, scanning, error and permission states are explicit.
+- **Library**: Songs, Albums, Artists and Genres from the Room `tracks` cache. Scroll position survives changing
+  category and tab. Row actions: play, play next, add to queue, view album, view artist.
+- **Details**: album (track numbers, total length), artist (albums and tracks), genre and folder, each with
+  Play, Shuffle and Add to queue.
+- **Search**: local only, case-insensitive, every word must match, ranked title-prefix first, debounced and run
+  off the main thread; recent searches are kept in DataStore.
+- **Folders**: folders derived from indexed tracks, plus folders granted through the system picker (persisted
+  read grants, status re-checked on resume). A granted folder lists the indexed tracks inside it.
+- **Basic mini player**: a stand-in above the bottom navigation (artwork, title, play/pause, next). M5 replaces
+  it with the real mini-player and Full Player.
+- Not shown on purpose because they belong to M4: Add to playlist, Favourite, playlist creation and detail.
 
 ## Motion
 
@@ -84,10 +100,14 @@ All motion numbers live in `core/animation/SonaraMotion.kt` (`MotionTokens`). Co
 
 ## Known limitations
 
-- The Room v1 to v2 migration is hand-written and has not been run on a device or in an instrumented test.
+- Room schema is still version 2; M3 added no tables.
+- A folder granted through the system picker only lists audio the MediaStore scan has indexed; unindexed files in it are not playable yet.
+- Artists are grouped by the track artist tag; multi-artist tags are not split.
+- Search matches names only (no lyrics, no genre), and playlists cannot be created until M4.
+- No shared-element artwork transition between album card and detail (planned with M7 motion).
 - Shuffle order is regenerated after a restart (only the on/off state is saved).
 - Notification artwork comes from MediaStore's album-art URI and may be missing for some files.
-- Nothing from M2 has been compiled or run by the author; CI and a phone are the first real build.
+- Nothing from M3 has been compiled or run by the author; CI and a phone are the first real build.
 
 - Space Grotesk is not bundled yet; display styles use the system sans until the font files are added
   (see `SonaraFonts`).

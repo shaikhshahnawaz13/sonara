@@ -48,6 +48,6 @@ class ArtworkProvider(
     fun clearMisses() = synchronized(cache) { missing.clear() }
 
     private companion object {
-        const val CACHE_BYTES = 8 * 1024 * 1024
+        const val CACHE_BYTES = 16 * 1024 * 1024
     }
 }

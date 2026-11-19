@@ -75,4 +75,17 @@ class SettingsRepositoryTest {
             assertTrue(settings.notificationPermissionRequested)
         }
     }
+
+    @Test
+    fun recentSearchesAreStoredNewestFirstAndCanBeCleared() {
+        runBlocking {
+            val repository = newRepository()
+            repository.addRecentSearch("rock")
+            repository.addRecentSearch("jazz")
+            repository.addRecentSearch("Rock")
+            assertEquals(listOf("Rock", "jazz"), repository.settings.first().recentSearches)
+            repository.clearRecentSearches()
+            assertEquals(emptyList<String>(), repository.settings.first().recentSearches)
+        }
+    }
 }

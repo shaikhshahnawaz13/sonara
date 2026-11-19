@@ -5,16 +5,25 @@ import android.database.ContentObserver
 import android.os.Handler
 import android.os.Looper
 import androidx.room.withTransaction
+import com.sonara.app.data.local.database.PlaylistEntity
 import com.sonara.app.data.local.database.SonaraDatabase
 import com.sonara.app.data.local.database.TrackEntity
 import com.sonara.app.data.local.preferences.SettingsRepository
 import com.sonara.app.data.media.MediaStoreMarker
 import com.sonara.app.data.media.MediaStoreScanner
+import com.sonara.app.data.model.Album
+import com.sonara.app.data.model.Artist
+import com.sonara.app.data.model.Genre
+import com.sonara.app.data.model.toAlbum
+import com.sonara.app.data.model.toArtist
+import com.sonara.app.data.model.toGenre
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -44,6 +53,32 @@ class LibraryRepository(
     val tracks: Flow<List<TrackEntity>> = trackDao.observeAll()
     val trackCount: Flow<Int> = trackDao.observeCount()
     val syncState: StateFlow<SyncState> = _syncState
+
+    // ---- Browsing ----
+    val albumCount: Flow<Int> = trackDao.observeAlbumCount()
+    val artistCount: Flow<Int> = trackDao.observeArtistCount()
+    val albums: Flow<List<Album>> = trackDao.observeAlbums().map { rows -> rows.map { it.toAlbum() } }
+    val artists: Flow<List<Artist>> = trackDao.observeArtists().map { rows -> rows.map { it.toArtist() } }
+
+    /** Genres from metadata, followed by one "Unknown genre" group when some tracks have no genre. */
+    val genres: Flow<List<Genre>> = combine(trackDao.observeGenres(), trackDao.observeUnknownGenreCount()) { rows, unknown ->
+        rows.map { it.toGenre() } + if (unknown > 0) listOf(Genre(name = null, trackCount = unknown)) else emptyList()
+    }
+
+    fun recentlyAdded(limit: Int): Flow<List<TrackEntity>> = trackDao.observeRecentlyAdded(limit)
+    fun recentlyPlayed(limit: Int): Flow<List<TrackEntity>> = trackDao.observeRecentlyPlayed(limit)
+
+    fun album(albumId: Long): Flow<Album?> = trackDao.observeAlbum(albumId).map { it?.toAlbum() }
+    fun albumTracks(albumId: Long): Flow<List<TrackEntity>> = trackDao.observeAlbumTracks(albumId)
+    fun albumsOfArtist(name: String): Flow<List<Album>> =
+        trackDao.observeAlbumsOfArtist(name).map { rows -> rows.map { it.toAlbum() } }
+    fun artistTracks(name: String): Flow<List<TrackEntity>> = trackDao.observeArtistTracks(name)
+    fun genreTracks(name: String?): Flow<List<TrackEntity>> =
+        if (name == null) trackDao.observeUnknownGenreTracks() else trackDao.observeGenreTracks(name)
+    fun folderTracks(path: String): Flow<List<TrackEntity>> = trackDao.observeFolderTracks(path)
+    fun treeTracks(prefix: String): Flow<List<TrackEntity>> = trackDao.observeTreeTracks(prefix, prefix.length)
+    val playlistCount: Flow<Int> = database.playlistDao().observeCount()
+    val playlists: Flow<List<PlaylistEntity>> = database.playlistDao().observeAll()
 
     /**
      * Brings Room in line with MediaStore. Unless [force] is set, a scan is skipped when MediaStore reports

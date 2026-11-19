@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.sonara.app.data.model.RecentSearches
 import java.io.IOException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -26,6 +27,8 @@ data class SonaraSettings(
     val notificationPermissionRequested: Boolean = false,
     /** MediaStore version/generation after the last completed scan; null before the first scan. */
     val libraryScanMarker: String? = null,
+    /** Most recent first, see RecentSearches. */
+    val recentSearches: List<String> = emptyList(),
 )
 
 internal object SettingsKeys {
@@ -34,6 +37,7 @@ internal object SettingsKeys {
     val audioPermissionRequested = booleanPreferencesKey("audio_permission_requested")
     val notificationPermissionRequested = booleanPreferencesKey("notification_permission_requested")
     val libraryScanMarker = stringPreferencesKey("library_scan_marker")
+    val recentSearches = stringPreferencesKey("recent_searches")
 }
 
 /** Maps raw preferences to [SonaraSettings]; missing or unrecognised values fall back to defaults. */
@@ -49,6 +53,7 @@ internal fun Preferences.toSettings(): SonaraSettings {
         notificationPermissionRequested = this[SettingsKeys.notificationPermissionRequested]
             ?: defaults.notificationPermissionRequested,
         libraryScanMarker = this[SettingsKeys.libraryScanMarker],
+        recentSearches = RecentSearches.decode(this[SettingsKeys.recentSearches]),
     )
 }
 
@@ -80,5 +85,16 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun setLibraryScanMarker(value: String) {
         dataStore.edit { it[SettingsKeys.libraryScanMarker] = value }
+    }
+
+    suspend fun addRecentSearch(query: String) {
+        dataStore.edit { prefs ->
+            val current = RecentSearches.decode(prefs[SettingsKeys.recentSearches])
+            prefs[SettingsKeys.recentSearches] = RecentSearches.encode(RecentSearches.add(current, query))
+        }
+    }
+
+    suspend fun clearRecentSearches() {
+        dataStore.edit { it.remove(SettingsKeys.recentSearches) }
     }
 }

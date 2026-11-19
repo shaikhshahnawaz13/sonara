@@ -15,6 +15,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlin.random.Random
 
 /**
  * The app's handle on playback. It is a MediaController client of [PlaybackService]: it holds no player
@@ -88,12 +89,48 @@ class PlaybackController(
     }
 
     /** Replaces the queue with [trackIds] and starts playing at [startIndex]. */
-    fun playTracks(trackIds: List<Long>, startIndex: Int) {
-        val c = controller ?: return
-        if (trackIds.isEmpty()) return
+    fun playTracks(trackIds: List<Long>, startIndex: Int): Boolean {
+        val c = controller ?: return false
+        if (trackIds.isEmpty()) return false
         c.setMediaItems(trackIds.map(::trackRequestItem), startIndex.coerceIn(0, trackIds.lastIndex), 0L)
         c.prepare()
         c.play()
+        return true
+    }
+
+    /** Turns shuffle on and starts playing [trackIds] from a random track. */
+    fun playShuffled(trackIds: List<Long>): Boolean {
+        val c = controller ?: return false
+        if (trackIds.isEmpty()) return false
+        c.shuffleModeEnabled = true
+        c.setMediaItems(trackIds.map(::trackRequestItem), Random.nextInt(trackIds.size), 0L)
+        c.prepare()
+        c.play()
+        return true
+    }
+
+    /** Inserts [trackIds] after the current track. With an empty queue they simply start playing. */
+    fun playNext(trackIds: List<Long>): Boolean {
+        val c = controller ?: return false
+        if (trackIds.isEmpty()) return false
+        if (c.mediaItemCount == 0) {
+            playTracks(trackIds, 0)
+        } else {
+            c.addMediaItems(c.currentMediaItemIndex + 1, trackIds.map(::trackRequestItem))
+        }
+        return true
+    }
+
+    /** Appends [trackIds] to the end of the queue. With an empty queue they simply start playing. */
+    fun addToQueue(trackIds: List<Long>): Boolean {
+        val c = controller ?: return false
+        if (trackIds.isEmpty()) return false
+        if (c.mediaItemCount == 0) {
+            playTracks(trackIds, 0)
+        } else {
+            c.addMediaItems(trackIds.map(::trackRequestItem))
+        }
+        return true
     }
 
     fun togglePlayPause() {

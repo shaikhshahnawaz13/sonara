@@ -11,6 +11,7 @@ import com.sonara.app.data.local.preferences.sonaraDataStore
 import com.sonara.app.data.media.ArtworkProvider
 import com.sonara.app.data.media.MediaStoreMarker
 import com.sonara.app.data.media.MediaStoreScanner
+import com.sonara.app.data.repository.FolderRepository
 import com.sonara.app.data.repository.LibraryRepository
 import com.sonara.app.playback.PlaybackController
 import kotlinx.coroutines.CoroutineScope
@@ -52,6 +53,8 @@ class AppContainer(context: Context) {
             onLibraryRescanned = { artworkProvider.clearMisses() },
         )
     }
+
+    val folderRepository: FolderRepository by lazy { FolderRepository(database, appContext.contentResolver) }
 
     val playbackController: PlaybackController by lazy { PlaybackController(appContext, appScope) }
 

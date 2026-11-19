@@ -38,6 +38,7 @@ class PlaybackService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
     private var player: ExoPlayer? = null
     private var persistence: PlaybackPersistence? = null
+    private var historyRecorder: PlayHistoryRecorder? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var consecutiveErrors = 0
 
@@ -79,6 +80,8 @@ class PlaybackService : MediaSessionService() {
         persist.start()
         persistence = persist
 
+        historyRecorder = PlayHistoryRecorder(exoPlayer, container.database.historyDao(), scope).also { it.start() }
+
         scope.launch { restoreSavedQueue(exoPlayer, store, persist) }
     }
 
@@ -96,6 +99,7 @@ class PlaybackService : MediaSessionService() {
     override fun onDestroy() {
         persistence?.flush(container.appScope)
         persistence?.stop()
+        historyRecorder?.stop()
         mediaSession?.release()
         mediaSession = null
         player?.release()

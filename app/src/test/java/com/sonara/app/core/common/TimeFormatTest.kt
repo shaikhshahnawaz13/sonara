@@ -12,4 +12,12 @@ class TimeFormatTest {
         assertEquals("0:00", formatDuration(-5_000))
     }
     @Test fun truncatesPartialSeconds() = assertEquals("0:59", formatDuration(59_999))
+
+    @Test fun totalDurationRoundsToMinutes() {
+        assertEquals("0 MIN", formatTotalDuration(0))
+        assertEquals("1 MIN", formatTotalDuration(20_000))
+        assertEquals("45 MIN", formatTotalDuration(45 * 60_000L))
+        assertEquals("1 H 05 MIN", formatTotalDuration(65 * 60_000L))
+        assertEquals("2 H 00 MIN", formatTotalDuration(120 * 60_000L))
+    }
 }

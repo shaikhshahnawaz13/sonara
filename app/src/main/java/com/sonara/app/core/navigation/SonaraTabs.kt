@@ -136,8 +136,6 @@ fun rememberSonaraTabsState(): SonaraTabsState {
 @Composable
 internal fun SonaraTabsHost(
     state: SonaraTabsState,
-    onOpenSearch: () -> Unit,
-    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     HorizontalPager(
@@ -151,8 +149,8 @@ internal fun SonaraTabsHost(
     ) { page ->
         SonaraScreenSurface {
             when (SonaraDestination.primary[page]) {
-                SonaraDestination.Home -> HomeScreen(onOpenSearch = onOpenSearch, onOpenSettings = onOpenSettings)
-                SonaraDestination.Library -> LibraryScreen(onOpenSearch = onOpenSearch)
+                SonaraDestination.Home -> HomeScreen()
+                SonaraDestination.Library -> LibraryScreen()
                 SonaraDestination.Playlists -> PlaylistsScreen()
                 SonaraDestination.Folders -> FoldersScreen()
                 else -> Unit
