@@ -37,6 +37,8 @@ private class SearchSources(
     val folders: List<Folder>,
 )
 
+private class SearchRequest(val query: String, val sources: SearchSources)
+
 /**
  * Search state. The query is held here so it survives rotation; matching runs off the main thread, is
  * debounced while typing and is cancelled when the query changes again.
@@ -58,8 +60,10 @@ class SearchViewModel(
     }
 
     /** Null while the query is empty. */
-    val results: StateFlow<UiState<SearchResults?>> = combine(_query.debounce(DEBOUNCE_MS).distinctUntilChanged(), sources) { q, src -> q to src }
-        .mapLatest { (q, src) ->
+    val results: StateFlow<UiState<SearchResults?>> = combine(_query.debounce(DEBOUNCE_MS).distinctUntilChanged(), sources) { q, src -> SearchRequest(q, src) }
+        .mapLatest { request ->
+            val q = request.query
+            val src = request.sources
             val state: UiState<SearchResults?> = if (SearchEngine.normalizeQuery(q).isEmpty()) {
                 UiState.Content(null)
             } else {
@@ -91,5 +95,10 @@ class SearchViewModel(
 
     fun clearRecent() {
         viewModelScope.launch { settings.clearRecentSearches() }
+    }
+
+    private companion object {
+        const val DEBOUNCE_MS = 150L
+        const val STOP_TIMEOUT_MS = 5_000L
     }
 }
