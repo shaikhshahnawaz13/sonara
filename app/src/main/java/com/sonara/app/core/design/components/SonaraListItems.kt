@@ -136,11 +136,12 @@ fun SonaraAlbumCard(
     val colors = SonaraTheme.colors
     val typography = SonaraTheme.typography
     BoxWithConstraints(modifier = modifier.clickable(role = Role.Button, onClick = onClick)) {
+        val artworkSide = this.maxWidth - SonaraSpacing.s16
         Column(
             modifier = Modifier.padding(SonaraSpacing.s8),
             verticalArrangement = Arrangement.spacedBy(SonaraSpacing.s4),
         ) {
-            SonaraArtwork(trackId = artworkTrackId, size = maxWidth - SonaraSpacing.s16)
+            SonaraArtwork(trackId = artworkTrackId, size = artworkSide)
             Text(text = title, style = typography.trackTitle, color = colors.foreground, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(text = artist, style = typography.metadata, color = colors.foregroundMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(text = plural(trackCount, "track").uppercase(), style = typography.microLabel, color = colors.foregroundMuted)
