@@ -15,8 +15,8 @@ android {
         applicationId = "com.sonara.app"
         minSdk = 31
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0-m1.2"
+        versionCode = 2
+        versionName = "1.0.0-m2"
     }
 
     buildTypes {
@@ -81,6 +81,10 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.datastore.preferences)
+
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.session)
+    implementation(libs.guava)
 
     implementation(libs.kotlinx.coroutines.android)
 

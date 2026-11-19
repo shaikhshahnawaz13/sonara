@@ -23,5 +23,7 @@ fun LibraryScreen(onOpenSearch: () -> Unit) {
             milestone = "M3",
             summary = "Library will list Songs, Albums, Artists and Genres discovered on this device.",
         )
+        // Temporary M2 verification of real discovery and playback; replaced by the M3 and M5 screens.
+        PlaybackCheckPanel(modifier = Modifier.weight(1f))
     }
 }

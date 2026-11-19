@@ -62,4 +62,17 @@ class SettingsRepositoryTest {
         val prefs = preferencesOf(stringPreferencesKey("animation_intensity") to "Off")
         assertEquals(AnimationIntensity.Off, prefs.toSettings().animationIntensity)
     }
+
+    @Test
+    fun scanMarkerAndNotificationFlagRoundTrip() {
+        runBlocking {
+            val repository = newRepository()
+            assertEquals(null, repository.settings.first().libraryScanMarker)
+            repository.setLibraryScanMarker("v1:42")
+            repository.markNotificationPermissionRequested()
+            val settings = repository.settings.first()
+            assertEquals("v1:42", settings.libraryScanMarker)
+            assertTrue(settings.notificationPermissionRequested)
+        }
+    }
 }

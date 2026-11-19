@@ -22,12 +22,18 @@ data class SonaraSettings(
     val resumePlayback: Boolean = true,
     /** Internal flag: whether the audio permission dialog was ever shown (needed to detect permanent denial). */
     val audioPermissionRequested: Boolean = false,
+    /** Internal flag: whether the notification permission dialog was ever shown (Android 13+). */
+    val notificationPermissionRequested: Boolean = false,
+    /** MediaStore version/generation after the last completed scan; null before the first scan. */
+    val libraryScanMarker: String? = null,
 )
 
 internal object SettingsKeys {
     val animationIntensity = stringPreferencesKey("animation_intensity")
     val resumePlayback = booleanPreferencesKey("resume_playback")
     val audioPermissionRequested = booleanPreferencesKey("audio_permission_requested")
+    val notificationPermissionRequested = booleanPreferencesKey("notification_permission_requested")
+    val libraryScanMarker = stringPreferencesKey("library_scan_marker")
 }
 
 /** Maps raw preferences to [SonaraSettings]; missing or unrecognised values fall back to defaults. */
@@ -40,6 +46,9 @@ internal fun Preferences.toSettings(): SonaraSettings {
         resumePlayback = this[SettingsKeys.resumePlayback] ?: defaults.resumePlayback,
         audioPermissionRequested = this[SettingsKeys.audioPermissionRequested]
             ?: defaults.audioPermissionRequested,
+        notificationPermissionRequested = this[SettingsKeys.notificationPermissionRequested]
+            ?: defaults.notificationPermissionRequested,
+        libraryScanMarker = this[SettingsKeys.libraryScanMarker],
     )
 }
 
@@ -63,5 +72,13 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
     suspend fun markAudioPermissionRequested() {
         dataStore.edit { it[SettingsKeys.audioPermissionRequested] = true }
+    }
+
+    suspend fun markNotificationPermissionRequested() {
+        dataStore.edit { it[SettingsKeys.notificationPermissionRequested] = true }
+    }
+
+    suspend fun setLibraryScanMarker(value: String) {
+        dataStore.edit { it[SettingsKeys.libraryScanMarker] = value }
     }
 }

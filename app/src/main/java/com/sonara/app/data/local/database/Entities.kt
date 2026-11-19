@@ -6,9 +6,9 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
- * Room holds only SONARA-owned data (spec section 8). Tracks, albums and artists are NOT duplicated
- * here: MediaStore stays the index source, and rows below reference tracks by their MediaStore id.
- * Whether a local track cache is warranted is decided in M2 with measurements.
+ * Room holds SONARA-owned data (spec section 8). The rows below reference tracks by their MediaStore id.
+ * The `tracks` cache (TrackEntity) is a rebuildable copy of MediaStore added in M2; albums and artists are
+ * not stored, they are derived from tracks when the Library screens need them (M3).
  */
 
 @Entity(tableName = "playlists")

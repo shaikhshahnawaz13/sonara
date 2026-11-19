@@ -1,0 +1,112 @@
+package com.sonara.app.data.repository
+
+import android.content.ContentResolver
+import android.database.ContentObserver
+import android.os.Handler
+import android.os.Looper
+import androidx.room.withTransaction
+import com.sonara.app.data.local.database.SonaraDatabase
+import com.sonara.app.data.local.database.TrackEntity
+import com.sonara.app.data.local.preferences.SettingsRepository
+import com.sonara.app.data.media.MediaStoreMarker
+import com.sonara.app.data.media.MediaStoreScanner
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+
+sealed interface SyncState {
+    data object Idle : SyncState
+    data object Scanning : SyncState
+    data class Done(val total: Int, val added: Int, val updated: Int, val removed: Int, val skipped: Boolean) : SyncState
+    data class Failed(val message: String) : SyncState
+}
+
+/**
+ * The library as discovered from MediaStore and cached in Room. Only call [sync] with audio access granted.
+ */
+class LibraryRepository(
+    private val database: SonaraDatabase,
+    private val scanner: MediaStoreScanner,
+    private val marker: MediaStoreMarker,
+    private val settings: SettingsRepository,
+    private val resolver: ContentResolver,
+    private val onLibraryRescanned: () -> Unit = {},
+) {
+    private val trackDao = database.trackDao()
+    private val mutex = Mutex()
+    private val _syncState = MutableStateFlow<SyncState>(SyncState.Idle)
+
+    val tracks: Flow<List<TrackEntity>> = trackDao.observeAll()
+    val trackCount: Flow<Int> = trackDao.observeCount()
+    val syncState: StateFlow<SyncState> = _syncState
+
+    /**
+     * Brings Room in line with MediaStore. Unless [force] is set, a scan is skipped when MediaStore reports
+     * the same version/generation as after the previous scan.
+     */
+    suspend fun sync(force: Boolean) = mutex.withLock {
+        try {
+            // Read the marker before scanning so a change made during the scan triggers the next one.
+            val currentMarker = marker.current()
+            if (!force && currentMarker == settings.settings.first().libraryScanMarker) {
+                _syncState.value = SyncState.Done(
+                    total = trackDao.fingerprints().size, added = 0, updated = 0, removed = 0, skipped = true,
+                )
+                return@withLock
+            }
+            _syncState.value = SyncState.Scanning
+            val scanned = scanner.scan()
+            val diff = LibraryDiffer.compute(trackDao.fingerprints(), scanned)
+            if (!diff.isEmpty) {
+                database.withTransaction {
+                    diff.toUpsert.chunked(UPSERT_CHUNK).forEach { trackDao.upsertAll(it) }
+                    diff.toDeleteIds.chunked(DELETE_CHUNK).forEach { trackDao.deleteByIds(it) }
+                }
+            }
+            settings.setLibraryScanMarker(currentMarker)
+            onLibraryRescanned()
+            _syncState.value = SyncState.Done(
+                total = scanned.size,
+                added = diff.added,
+                updated = diff.updated,
+                removed = diff.toDeleteIds.size,
+                skipped = false,
+            )
+        } catch (e: SecurityException) {
+            _syncState.value = SyncState.Failed("Audio access was refused by the system.")
+        } catch (e: Exception) {
+            _syncState.value = SyncState.Failed(e.message ?: e.javaClass.simpleName)
+        }
+    }
+
+    /** Emits whenever MediaStore reports a change to audio files. */
+    fun mediaStoreChanges(): Flow<Unit> = callbackFlow {
+        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) {
+                trySend(Unit)
+            }
+        }
+        resolver.registerContentObserver(MediaStoreScanner.COLLECTION, true, observer)
+        awaitClose { resolver.unregisterContentObserver(observer) }
+    }
+
+    /** Ids chunked under SQLite's bound-variable limit. */
+    suspend fun tracksByIds(ids: List<Long>): List<TrackEntity> {
+        val byId = HashMap<Long, TrackEntity>(ids.size * 2)
+        ids.distinct().chunked(LOOKUP_CHUNK).forEach { chunk ->
+            trackDao.getByIds(chunk).forEach { byId[it.id] = it }
+        }
+        return ids.mapNotNull { byId[it] }
+    }
+
+    private companion object {
+        const val UPSERT_CHUNK = 500
+        const val DELETE_CHUNK = 500
+        const val LOOKUP_CHUNK = 500
+    }
+}

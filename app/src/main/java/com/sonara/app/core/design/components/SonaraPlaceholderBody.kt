@@ -3,7 +3,6 @@ package com.sonara.app.core.design.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
@@ -26,7 +25,7 @@ fun SonaraPlaceholderBody(
     modifier: Modifier = Modifier,
 ) {
     val colors = SonaraTheme.colors
-    Column(modifier = modifier.fillMaxSize().padding(SonaraSpacing.s16)) {
+    Column(modifier = modifier.fillMaxWidth().padding(SonaraSpacing.s16)) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()

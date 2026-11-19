@@ -12,8 +12,8 @@ milestone by milestone against the SONARA V1.0 master specification.
 |---|---|---|
 | M1 | Foundation: Gradle, tokens, theme, navigation skeleton, Room, DataStore, permission abstraction, CI | Delivered, CI green |
 | M1.1 | Motion foundation: central tokens, push/pop navigation, travelling nav indicator, reduced motion | Delivered |
-| M1.2 | Tabs as one continuous page strip; indicator driven by the strip | Delivered, awaiting CI run and on-device check |
-| M2 | Discovery and playback | Not started |
+| M1.2 | Tabs as one continuous page strip; indicator driven by the strip | Delivered, verified on device |
+| M2 | Discovery and playback: permissions, MediaStore scan, Room cache, Media3 service, notification and media controls | Delivered, awaiting CI run and on-device check |
 | M3–M8 | Library, music management, player, advanced features, motion, QA and release | Not started |
 
 Every screen other than the navigation shell is an honest placeholder that says which milestone builds it.
@@ -43,11 +43,28 @@ GitHub Actions (`SONARA CI`) runs the same commands through the wrapper and uplo
 | `core/design` | Colour, typography, shape and spacing tokens, `SonaraTheme` |
 | `core/design/components` | Reusable components (top bar, bottom navigation, icon button, wordmark, placeholder) |
 | `core/navigation` | `SonaraDestination` and the navigation graph |
-| `core/permissions` | Version-aware audio permission policy and checker |
-| `data/local` | Room database, entities, DAOs and DataStore settings |
+| `core/permissions` | Version-aware audio/notification permission policy, `PermissionCoordinator` (Activity launchers), `AudioAccessModel` (process-wide state) |
+| `data/local` | Room database (v2), entities, DAOs and DataStore settings |
+| `data/media` | MediaStore scanner, metadata normaliser, artwork loader, scan marker |
+| `data/repository` | `LibraryRepository` (scan, diff, Room cache, change observer) |
+| `playback` | `PlaybackService` (ExoPlayer + MediaSession), `PlaybackController` (MediaController client), persistence and queue restore |
 | `feature/*` | One package per screen area |
 
-Packages for playback, media discovery and repositories are created in the milestone that needs them.
+## M2: discovery and playback
+
+- **Permissions**: Android 13+ asks for `READ_MEDIA_AUDIO` (then `POST_NOTIFICATIONS`, once, after audio is granted);
+  Android 12 asks for `READ_EXTERNAL_STORAGE`. Not-requested, denied and permanently-denied states each get their own
+  prompt, and the state is re-read when the app returns from system Settings.
+- **Discovery**: `MediaStoreScanner` reads music files; `TrackNormalizer` cleans tags; `LibraryDiffer` compares the
+  result with the Room `tracks` table so only changed rows are written. A MediaStore version/generation marker lets
+  launches skip the scan when nothing changed, and a content observer rescans while the app runs.
+- **Playback**: one `ExoPlayer` inside one `MediaSessionService`. Audio focus, headphone/Bluetooth disconnect
+  pause and the wake lock are ExoPlayer settings. The UI only holds a `MediaController` and never the player, so
+  playback does not depend on any screen. Controllers send track ids; the service resolves them from Room.
+- **Persistence**: queue, current track, position, shuffle and repeat are saved to Room and restored (paused) when
+  the service starts; tracks deleted in the meantime are dropped.
+- **Temporary UI**: the Library tab carries an "M2 PLAYBACK CHECK" panel so real discovery and playback can be
+  exercised before the Library (M3) and Player (M5) screens exist. It is removed when those are built.
 
 ## Motion
 
@@ -65,7 +82,12 @@ All motion numbers live in `core/animation/SonaraMotion.kt` (`MotionTokens`). Co
 - Reduced motion = shorter durations and no parallax. Off = everything snaps. The in-app setting and the
   system "remove animations" scale are combined in `app/MotionPlumbing.kt`.
 
-## Known M1 limitations
+## Known limitations
+
+- The Room v1 to v2 migration is hand-written and has not been run on a device or in an instrumented test.
+- Shuffle order is regenerated after a restart (only the on/off state is saved).
+- Notification artwork comes from MediaStore's album-art URI and may be missing for some files.
+- Nothing from M2 has been compiled or run by the author; CI and a phone are the first real build.
 
 - Space Grotesk is not bundled yet; display styles use the system sans until the font files are added
   (see `SonaraFonts`).

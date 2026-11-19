@@ -6,14 +6,20 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.sonara.app.R
 import com.sonara.app.core.design.SonaraTheme
 import com.sonara.app.core.navigation.SonaraApp
+import com.sonara.app.core.permissions.LocalPermissionActions
+import com.sonara.app.core.permissions.PermissionCoordinator
 import com.sonara.app.data.local.preferences.SonaraSettings
 
 class MainActivity : ComponentActivity() {
+
+    private lateinit var container: AppContainer
+    private lateinit var permissions: PermissionCoordinator
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // The manifest theme carries the system splash screen; switch to the normal theme once it is shown.
@@ -26,15 +32,45 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
 
-        val container = (application as SonaraApplication).container
+        container = (application as SonaraApplication).container
+        // Launchers must be registered before the Activity is STARTED.
+        permissions = PermissionCoordinator(
+            activity = this,
+            audioAccess = container.audioAccess,
+            settings = container.settingsRepository,
+            checker = container.audioPermissionChecker,
+            scope = container.appScope,
+        )
 
         setContent {
             val settings by container.settingsRepository.settings.collectAsState(initial = SonaraSettings())
             val motionLevel = resolveMotionLevel(settings.animationIntensity, rememberSystemAnimatorScale())
 
             SonaraTheme(motionLevel = motionLevel) {
-                SonaraApp()
+                CompositionLocalProvider(
+                    LocalAppContainer provides container,
+                    LocalPermissionActions provides permissions.actions,
+                ) {
+                    SonaraApp()
+                }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // Playback lives in the service; the Activity only attaches a controller while it is visible.
+        container.playbackController.connect()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // The permission may have been changed in system Settings while the app was in the background.
+        permissions.refresh()
+    }
+
+    override fun onStop() {
+        container.playbackController.disconnect()
+        super.onStop()
     }
 }
