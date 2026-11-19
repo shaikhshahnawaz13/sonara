@@ -22,8 +22,11 @@ import com.sonara.app.data.local.dao.TrackDao
         FavouriteEntity::class,
         PlayHistoryEntity::class,
         SelectedFolderEntity::class,
+        TrackEntity::class,
+        PlaybackQueueItemEntity::class,
+        PlaybackStateEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class SonaraDatabase : RoomDatabase() {
