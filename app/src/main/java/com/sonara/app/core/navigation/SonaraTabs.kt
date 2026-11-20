@@ -5,11 +5,18 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.animation.core.animate
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.withFrameNanos
+import kotlinx.coroutines.flow.first
 import androidx.compose.ui.layout.onSizeChanged
 import com.sonara.app.core.animation.SonaraMotion
 import com.sonara.app.core.design.components.SonaraScreenSurface
@@ -32,6 +39,17 @@ internal fun tabTravelPages(from: Float, target: Int): Int =
  */
 internal fun shouldIgnoreTabRequest(requested: Int, activeTarget: Int?, currentPage: Int): Boolean =
     requested == (activeTarget ?: currentPage)
+
+/**
+ * How many pages beside the visible one stay composed. Before the tabs have settled, one on each side, so
+ * start-up and returning from a deeper screen stay cheap. Once settled, every page, so a trip between tabs
+ * never has to compose or dispose a page while it is animating.
+ */
+internal fun pagesKeptComposed(warm: Boolean, pageCount: Int): Int =
+    if (warm) (pageCount - 1).coerceAtLeast(1) else 1
+
+/** Frames to wait after the tabs settle before composing the remaining pages, so that work never shares a frame with a transition. */
+private const val WARM_UP_FRAMES = 3
 
 /** Below this speed (px/s) a new trip starts from rest, with the normal curve, instead of carrying velocity. */
 private const val CARRY_VELOCITY_THRESHOLD = 50f
@@ -131,19 +149,27 @@ fun rememberSonaraTabsState(): SonaraTabsState {
 
 /**
  * The pager itself. Swiping is off for now: tabs change by tapping the bottom navigation only.
- * Neighbouring pages are composed ahead of time so a page never pops in mid-travel.
+ * Pages are composed ahead of time (see [pagesKeptComposed]) so a page never pops in mid-travel.
  */
 @Composable
 internal fun SonaraTabsHost(
     state: SonaraTabsState,
     modifier: Modifier = Modifier,
+    /** True while no navigation transition is moving the tabs. Read in a coroutine, never in composition. */
+    settled: () -> Boolean = { true },
 ) {
+    var warm by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        snapshotFlow(settled).first { it }
+        repeat(WARM_UP_FRAMES) { withFrameNanos { } }
+        warm = true
+    }
     HorizontalPager(
         state = state.pagerState,
         modifier = modifier
             .fillMaxSize()
             .onSizeChanged { state.pageExtentPx = it.width },
-        beyondViewportPageCount = 1,
+        beyondViewportPageCount = pagesKeptComposed(warm, state.pagerState.pageCount),
         userScrollEnabled = false,
         key = { page -> SonaraDestination.primary[page].route },
     ) { page ->

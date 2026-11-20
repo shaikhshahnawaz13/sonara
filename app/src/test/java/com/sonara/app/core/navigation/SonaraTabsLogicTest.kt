@@ -54,4 +54,19 @@ class SonaraTabsLogicTest {
         // Heading to Folders (3), strip currently closest to Library (1): tapping Library must reverse.
         assertFalse(shouldIgnoreTabRequest(requested = 1, activeTarget = 3, currentPage = 1))
     }
+
+    @Test
+    fun beforeSettlingOnlyTheNeighboursStayComposed() {
+        assertEquals(1, pagesKeptComposed(warm = false, pageCount = 4))
+    }
+
+    @Test
+    fun afterSettlingEveryOtherPageStaysComposed() {
+        assertEquals(3, pagesKeptComposed(warm = true, pageCount = 4))
+    }
+
+    @Test
+    fun aSinglePageNeverAsksForANegativeCount() {
+        assertEquals(1, pagesKeptComposed(warm = true, pageCount = 1))
+    }
 }

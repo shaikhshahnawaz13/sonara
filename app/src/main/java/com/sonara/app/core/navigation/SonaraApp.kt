@@ -1,6 +1,7 @@
 package com.sonara.app.core.navigation
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.EnterExitState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
@@ -10,6 +11,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -21,6 +23,7 @@ import androidx.navigation.navArgument
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.sonara.app.core.animation.SonaraMotion
 import com.sonara.app.core.design.SonaraTheme
 import com.sonara.app.core.design.components.SonaraBottomNavigation
 import com.sonara.app.core.design.components.SonaraNavItem
@@ -63,10 +66,7 @@ fun SonaraApp() {
         SonaraNavigator(libraryCategory, navController, tabs) { currentMotion }
     }
 
-    // Back from any tab other than Home returns to Home, then leaves the app, as before.
-    BackHandler(enabled = onTabs && tabs.selectedPage != 0) {
-        tabs.select(0, motion)
-    }
+    TabsBackHandler(onTabs = onTabs, tabs = tabs, motion = motion)
 
     CompositionLocalProvider(LocalSonaraNavigator provides navigator, LocalSnackbar provides snackbar) {
     Scaffold(
@@ -97,7 +97,14 @@ fun SonaraApp() {
             popExitTransition = { motion.popExit() },
         ) {
             composable(SonaraDestination.TABS_ROUTE) {
-                SonaraTabsHost(state = tabs)
+                // Tabs are "settled" when no push or pop is moving them; only then are the other pages composed.
+                val settled = remember(transition) {
+                    derivedStateOf {
+                        transition.currentState == EnterExitState.Visible &&
+                            transition.targetState == EnterExitState.Visible
+                    }
+                }
+                SonaraTabsHost(state = tabs, settled = { settled.value })
             }
             composable(SonaraDestination.Search.route) {
                 SonaraScreenSurface { SearchScreen() }
@@ -139,6 +146,17 @@ fun SonaraApp() {
             }
         }
     }
+    }
+}
+
+/**
+ * Back from any tab other than Home returns to Home, then leaves the app. The selected page is read here,
+ * in its own scope, so the page changing half-way through a tab trip recomposes this and not the whole app.
+ */
+@Composable
+private fun TabsBackHandler(onTabs: Boolean, tabs: SonaraTabsState, motion: SonaraMotion) {
+    BackHandler(enabled = onTabs && tabs.selectedPage != 0) {
+        tabs.select(0, motion)
     }
 }
 
