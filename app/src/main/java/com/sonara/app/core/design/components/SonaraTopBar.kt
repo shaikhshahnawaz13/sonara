@@ -11,10 +11,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -48,7 +44,7 @@ fun SonaraTopBar(
         ) {
             if (onBack != null) {
                 SonaraIconButton(
-                    icon = Icons.AutoMirrored.Filled.ArrowBack,
+                    icon = SonaraIcons.Back,
                     contentDescription = "Back",
                     onClick = onBack,
                 )
@@ -97,8 +93,8 @@ private fun SonaraTopBarPreview() {
         SonaraTopBar(
             title = { SonaraWordmark() },
             actions = {
-                SonaraIconButton(Icons.Filled.Search, "Search", onClick = {})
-                SonaraIconButton(Icons.Filled.Settings, "Settings", onClick = {})
+                SonaraIconButton(SonaraIcons.Search, "Search", onClick = {})
+                SonaraIconButton(SonaraIcons.Settings, "Settings", onClick = {})
             },
         )
     }

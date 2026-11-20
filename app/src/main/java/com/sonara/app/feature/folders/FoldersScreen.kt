@@ -7,8 +7,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -35,6 +33,7 @@ import com.sonara.app.data.repository.FolderRepository
 import com.sonara.app.feature.common.LibraryEmptyState
 import com.sonara.app.feature.common.UiState
 import com.sonara.app.feature.common.appViewModel
+import com.sonara.app.core.design.components.SonaraIcons
 
 @Composable
 fun FoldersScreen() {
@@ -61,7 +60,7 @@ fun FoldersScreen() {
         SonaraTopBar(
             title = "FOLDERS",
             actions = {
-                SonaraIconButton(Icons.Filled.Add, "Add a folder", onClick = { picker.launch(null) })
+                SonaraIconButton(SonaraIcons.Add, "Add a folder", onClick = { picker.launch(null) })
             },
         )
         when (val state = content) {
@@ -91,7 +90,7 @@ fun FoldersScreen() {
                         }
                     }
                 }
-                items(items = state.data.userFolders, key = { "u-${it.id}" }) { folder ->
+                items(items = state.data.userFolders, key = { "u-${it.id}" }, contentType = { "user-folder" }) { folder ->
                     val usable = folder.state == FolderPermissionState.Granted
                     SonaraFolderRow(
                         name = folder.name,
@@ -125,7 +124,7 @@ fun FoldersScreen() {
                     if (state.data.indexedFolders.isEmpty()) {
                         item { LibraryEmptyState(sync = sync, onRescan = viewModel::rescan) }
                     } else {
-                        items(items = state.data.indexedFolders, key = { "i-${it.path}" }) { folder ->
+                        items(items = state.data.indexedFolders, key = { "i-${it.path}" }, contentType = { "folder" }) { folder ->
                             SonaraFolderRow(
                                 name = folder.name,
                                 location = folder.parentPath,

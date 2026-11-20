@@ -113,3 +113,11 @@ All motion numbers live in `core/animation/SonaraMotion.kt` (`MotionTokens`). Co
   (see `SonaraFonts`).
 - Logo and launcher icon are temporary placeholders.
 - No INTERNET permission, by design.
+
+
+## M3.1 refinement
+
+- **Library category transition**: Songs / Albums / Artists / Genres slide horizontally (300 ms, the bottom-navigation curve, no overshoot) in the direction of travel; the lime indicator travels with them. Each category keeps its own scroll state. Reduced motion shortens it, "off" snaps.
+- **Scrolling**: artwork is served from memory synchronously when cached, decoded off the main thread at most 3 at a time, and abandoned when its row scrolls away; album tiles no longer use `BoxWithConstraints`; rows no longer observe the whole playback state; lazy items carry stable keys and content types.
+- **Logo and icons**: `branding/sonara-logo-source.webp` is the supplied logo. The launcher icon, splash icon and in-app mark are traced from it (not redrawn). `SonaraIcons` is the single icon family.
+- **Judging smoothness**: use the `perf` build (`./gradlew :app:assemblePerf`, uploaded by CI as `SONARA-perf-apk`). Debug builds run Compose unoptimised and understate smoothness.

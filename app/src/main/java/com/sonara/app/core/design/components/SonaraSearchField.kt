@@ -6,8 +6,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -49,7 +47,7 @@ fun SonaraSearchField(
                 }
                 if (value.isNotEmpty()) {
                     SonaraIconButton(
-                        icon = Icons.Filled.Close,
+                        icon = SonaraIcons.Close,
                         contentDescription = "Clear search",
                         onClick = { onValueChange("") },
                     )

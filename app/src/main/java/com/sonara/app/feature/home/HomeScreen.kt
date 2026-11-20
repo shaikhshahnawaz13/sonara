@@ -13,9 +13,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -49,7 +46,9 @@ import com.sonara.app.feature.common.LibraryEmptyState
 import com.sonara.app.feature.common.UiState
 import com.sonara.app.feature.common.appViewModel
 import com.sonara.app.feature.common.rememberPlaybackActions
-import com.sonara.app.feature.common.trackMenu
+import com.sonara.app.feature.common.rememberCurrentTrackId
+import com.sonara.app.feature.common.rememberTrackMenu
+import com.sonara.app.core.design.components.SonaraIcons
 
 @Composable
 fun HomeScreen() {
@@ -79,8 +78,8 @@ fun HomeScreen() {
                 }
             },
             actions = {
-                SonaraIconButton(Icons.Filled.Search, "Search", onClick = navigator::openSearch)
-                SonaraIconButton(Icons.Filled.Settings, "Settings", onClick = navigator::openSettings)
+                SonaraIconButton(SonaraIcons.Search, "Search", onClick = navigator::openSearch)
+                SonaraIconButton(SonaraIcons.Settings, "Settings", onClick = navigator::openSettings)
             },
         )
         if (access != AudioAccessState.Granted) {
@@ -99,8 +98,9 @@ fun HomeScreen() {
 private fun HomeContentList(content: HomeContent, sync: SyncState, onRescan: () -> Unit) {
     val navigator = LocalSonaraNavigator.current
     val actions = rememberPlaybackActions()
-    val playback by LocalAppContainer.current.playbackController.state.collectAsStateWithLifecycle()
+    val currentTrackId by rememberCurrentTrackId()
     val counts = content.counts
+    val addedIds = remember(content.recentlyAdded) { content.recentlyAdded.map { it.id } }
     val colors = SonaraTheme.colors
     val typography = SonaraTheme.typography
 
@@ -163,24 +163,23 @@ private fun HomeContentList(content: HomeContent, sync: SyncState, onRescan: () 
                     contentPadding = PaddingValues(horizontal = SonaraSpacing.s16),
                     horizontalArrangement = Arrangement.spacedBy(SonaraSpacing.s12),
                 ) {
-                    itemsIndexed(content.continueListening, key = { _, t -> t.id }) { index, track ->
-                        RecentCard(track, isCurrent = playback.currentTrackId == track.id) { actions.play(ids, index) }
+                    itemsIndexed(content.continueListening, key = { _, t -> t.id }, contentType = { _, _ -> "recent" }) { index, track ->
+                        RecentCard(track, isCurrent = currentTrackId == track.id) { actions.play(ids, index) }
                     }
                 }
             }
         }
 
         item { Section("RECENTLY ADDED") }
-        val addedIds = content.recentlyAdded.map { it.id }
-        itemsIndexed(content.recentlyAdded, key = { _, t -> "added-${t.id}" }) { index, track ->
+        itemsIndexed(content.recentlyAdded, key = { _, t -> "added-${t.id}" }, contentType = { _, _ -> "song" }) { index, track ->
             SonaraTrackRow(
                 title = track.title,
                 subtitle = "${track.artist} · ${track.album}",
                 durationMs = track.durationMs,
                 artworkTrackId = track.id,
-                isCurrent = playback.currentTrackId == track.id,
+                isCurrent = currentTrackId == track.id,
                 onClick = { actions.play(addedIds, index) },
-                menu = trackMenu(track, actions, navigator),
+                menu = rememberTrackMenu(track, actions, navigator),
             )
         }
     }

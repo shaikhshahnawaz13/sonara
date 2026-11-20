@@ -49,6 +49,12 @@ jobs:
       - name: Build debug APK
         run: ./gradlew --console=plain :app:assembleDebug
 
+      # The optimised, non-debuggable build used to judge scrolling and animation. It is not a gate: it
+      # exercises R8, which has no unit tests, so a failure here is reported without failing the run.
+      - name: Build perf APK (R8, not debuggable)
+        continue-on-error: true
+        run: ./gradlew --console=plain :app:assemblePerf
+
       # Lint results are reported but do not gate M1; the gate is tests plus a successful build.
       - name: Lint
         continue-on-error: true
@@ -86,4 +92,12 @@ jobs:
         with:
           name: SONARA-debug-apk
           path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: warn
+
+      - name: Upload perf APK
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SONARA-perf-apk
+          path: app/build/outputs/apk/perf/*.apk
           if-no-files-found: warn

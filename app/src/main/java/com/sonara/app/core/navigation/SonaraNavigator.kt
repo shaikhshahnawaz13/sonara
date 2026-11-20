@@ -15,6 +15,10 @@ enum class LibraryCategory(val label: String) {
     Genres("GENRES"),
 }
 
+/** +1 when [to] comes after [from] (content slides in from the right), -1 when it comes before. */
+internal fun categorySlideDirection(from: LibraryCategory, to: LibraryCategory): Int =
+    if (to.ordinal > from.ordinal) 1 else -1
+
 /**
  * Everything a screen may ask the app to open. Screens call these instead of owning a NavController,
  * so they stay independent of how navigation is wired.

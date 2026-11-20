@@ -15,14 +15,30 @@ android {
         applicationId = "com.sonara.app"
         minSdk = 31
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.0.0-m3"
+        versionCode = 4
+        versionName = "1.0.0-m3.1"
     }
 
     buildTypes {
         release {
             // Minification and signing are configured in M8 (QA and release).
             isMinifyEnabled = false
+        }
+
+        // A debug-signed build with the optimisations of a release build (R8 shrinking and optimisation,
+        // not debuggable). Debug builds run Compose unoptimised and feel noticeably less smooth than
+        // the real app, so scrolling and animation are judged on this build. It installs next to the
+        // debug build under its own application id.
+        create("perf") {
+            initWith(getByName("release"))
+            isDebuggable = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("debug")
+            applicationIdSuffix = ".perf"
+            versionNameSuffix = "-perf"
+            matchingFallbacks += listOf("release")
         }
     }
 

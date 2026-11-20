@@ -34,6 +34,9 @@ object MotionTokens {
     const val PUSH_MS = 400
     const val POP_MS = 360
 
+    /** Library category change: content slide and indicator travel. Inside the 250-350 ms target. */
+    const val CATEGORY_MS = 300
+
     /** Tab travel: one page takes this long when starting from rest. */
     const val TAB_TRAVEL_BASE_MS = 380
 
@@ -118,6 +121,12 @@ class SonaraMotion(val level: MotionLevel) {
     fun <T> pushSpec(): FiniteAnimationSpec<T> = timed(MotionTokens.PUSH_MS, MotionTokens.SlideEasing)
 
     fun <T> popSpec(): FiniteAnimationSpec<T> = timed(MotionTokens.POP_MS, MotionTokens.SlideEasing)
+
+    /**
+     * Library category slide and its indicator. It uses the tab-travel curve so it moves like the
+     * bottom navigation, with no overshoot. Reduced motion shortens it; off snaps.
+     */
+    fun <T> categorySpec(): FiniteAnimationSpec<T> = timed(MotionTokens.CATEGORY_MS, MotionTokens.TabTravelEasing)
 
     fun <T> selectionColorSpec(): FiniteAnimationSpec<T> =
         timed(MotionTokens.SELECTION_COLOR_MS, MotionTokens.StandardEasing)

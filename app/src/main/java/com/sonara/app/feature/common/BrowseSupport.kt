@@ -1,9 +1,12 @@
 package com.sonara.app.feature.common
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
@@ -113,3 +116,27 @@ fun trackMenu(
     if (showAlbum) add(SonaraMenuAction("VIEW ALBUM") { navigator.openAlbum(track.albumId) })
     if (showArtist) add(SonaraMenuAction("VIEW ARTIST") { navigator.openArtist(track.artist) })
 }
+
+/**
+ * The id of the track playing now, as a State that changes only when the track changes. Reading the whole
+ * playback state inside a list would recompose every visible row on each play/pause or buffering flip.
+ */
+@Composable
+fun rememberCurrentTrackId(): State<Long?> {
+    val controller = LocalAppContainer.current.playbackController
+    val playback = controller.state.collectAsStateWithLifecycle()
+    return remember(controller) { derivedStateOf { playback.value.currentTrackId } }
+}
+
+/** The overflow actions of a song row, remembered so an unchanged row keeps the same list instance. */
+@Composable
+fun rememberTrackMenu(
+    track: TrackEntity,
+    actions: PlaybackActions,
+    navigator: SonaraNavigator,
+    showAlbum: Boolean = true,
+    showArtist: Boolean = true,
+): List<SonaraMenuAction> =
+    remember(track, actions, navigator, showAlbum, showArtist) {
+        trackMenu(track, actions, navigator, showAlbum, showArtist)
+    }

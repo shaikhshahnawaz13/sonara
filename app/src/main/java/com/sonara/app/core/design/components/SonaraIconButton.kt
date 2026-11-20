@@ -6,8 +6,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -73,6 +71,6 @@ fun SonaraIconButton(
 @Composable
 private fun SonaraIconButtonPreview() {
     SonaraTheme {
-        SonaraIconButton(icon = Icons.Filled.Search, contentDescription = "Search", onClick = {})
+        SonaraIconButton(icon = SonaraIcons.Search, contentDescription = "Search", onClick = {})
     }
 }

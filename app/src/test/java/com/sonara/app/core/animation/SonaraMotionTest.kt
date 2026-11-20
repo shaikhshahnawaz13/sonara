@@ -145,4 +145,19 @@ class SonaraMotionTest {
     fun pressScaleIsSubtle() {
         assertTrue(MotionTokens.PRESS_SCALE in 0.85f..0.98f)
     }
+
+    @Test
+    fun categoryTransitionIsInsideTheTargetWindow() {
+        assertTrue(MotionTokens.CATEGORY_MS in 250..350)
+        val spec = full.categorySpec<Float>()
+        assertTrue(spec is TweenSpec<*>)
+        assertEquals(MotionTokens.CATEGORY_MS, (spec as TweenSpec<*>).durationMillis)
+    }
+
+    @Test
+    fun categoryTransitionShortensWhenReducedAndSnapsWhenOff() {
+        val reducedSpec = reduced.categorySpec<Float>() as TweenSpec<*>
+        assertTrue(reducedSpec.durationMillis < MotionTokens.CATEGORY_MS)
+        assertTrue(off.categorySpec<Float>() is SnapSpec<*>)
+    }
 }

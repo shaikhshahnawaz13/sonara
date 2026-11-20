@@ -23,7 +23,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.sonara.app.app.LocalAppContainer
 import com.sonara.app.core.common.formatTotalDuration
 import com.sonara.app.core.design.SonaraSpacing
 import com.sonara.app.core.design.SonaraTheme
@@ -45,7 +44,8 @@ import com.sonara.app.feature.common.BrowseViewModel
 import com.sonara.app.feature.common.UiState
 import com.sonara.app.feature.common.appViewModel
 import com.sonara.app.feature.common.rememberPlaybackActions
-import com.sonara.app.feature.common.trackMenu
+import com.sonara.app.feature.common.rememberCurrentTrackId
+import com.sonara.app.feature.common.rememberTrackMenu
 
 /** Which context a track list is shown in; decides numbering, subtitle and which menu entries make sense. */
 private enum class TrackContext { Album, Artist, Mixed }
@@ -98,7 +98,7 @@ fun ArtistDetailScreen(name: String) {
                         item { SonaraSectionHeader("ALBUMS", Modifier.padding(horizontal = SonaraSpacing.s16)) }
                         item {
                             LazyRow(contentPadding = PaddingValues(horizontal = SonaraSpacing.s8)) {
-                                items(detail.albums, key = { it.id }) { album ->
+                                items(detail.albums, key = { it.id }, contentType = { "album" }) { album ->
                                     SonaraAlbumCard(
                                         title = album.title,
                                         artist = if (album.year > 0) album.year.toString() else album.artist,
@@ -201,7 +201,7 @@ private fun CollectionList(
 ) {
     val navigator = LocalSonaraNavigator.current
     val actions = rememberPlaybackActions()
-    val playback by LocalAppContainer.current.playbackController.state.collectAsStateWithLifecycle()
+    val currentTrackId by rememberCurrentTrackId()
     val ids = remember(tracks) { tracks.map { it.id } }
     val colors = SonaraTheme.colors
     val typography = SonaraTheme.typography
@@ -233,7 +233,7 @@ private fun CollectionList(
             }
         }
         if (beforeTracks != null) beforeTracks() else item { Spacer(Modifier.height(SonaraSpacing.s8)) }
-        itemsIndexed(items = tracks, key = { _, t -> t.id }) { index, track ->
+        itemsIndexed(items = tracks, key = { _, t -> t.id }, contentType = { _, _ -> "song" }) { index, track ->
             SonaraTrackRow(
                 title = track.title,
                 subtitle = when (context) {
@@ -244,9 +244,9 @@ private fun CollectionList(
                 durationMs = track.durationMs,
                 artworkTrackId = track.id,
                 leadingNumber = if (context == TrackContext.Album) track.trackNumber else null,
-                isCurrent = playback.currentTrackId == track.id,
+                isCurrent = currentTrackId == track.id,
                 onClick = { actions.play(ids, index) },
-                menu = trackMenu(
+                menu = rememberTrackMenu(
                     track, actions, navigator,
                     showAlbum = context != TrackContext.Album,
                     showArtist = context != TrackContext.Artist,

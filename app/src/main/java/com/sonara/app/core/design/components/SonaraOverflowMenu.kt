@@ -2,8 +2,6 @@ package com.sonara.app.core.design.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
@@ -30,7 +28,7 @@ fun SonaraOverflowMenu(
     var expanded by remember { mutableStateOf(false) }
     val colors = SonaraTheme.colors
     SonaraIconButton(
-        icon = Icons.Filled.MoreVert,
+        icon = SonaraIcons.More,
         contentDescription = contentDescription,
         onClick = { expanded = true },
         modifier = modifier,

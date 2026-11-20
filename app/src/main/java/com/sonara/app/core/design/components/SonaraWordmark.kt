@@ -1,27 +1,35 @@
 package com.sonara.app.core.design.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sonara.app.R
 import com.sonara.app.core.design.SonaraSpacing
 import com.sonara.app.core.design.SonaraTheme
 
-/** Temporary typographic wordmark with one acid-lime square. The final logo is designed separately. */
+private val LogoHeight = 14.dp
+
+/** The official SONARA mountain mark followed by the typographic wordmark. */
 @Composable
 fun SonaraWordmark(modifier: Modifier = Modifier) {
     val colors = SonaraTheme.colors
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
-        Box(modifier = Modifier.size(SonaraSpacing.s12).background(colors.accent))
+        Image(
+            painter = painterResource(R.drawable.ic_logo_mark),
+            contentDescription = null,
+            modifier = Modifier.height(LogoHeight),
+        )
         Spacer(modifier = Modifier.width(SonaraSpacing.s8))
         Text(
             text = "SONARA",

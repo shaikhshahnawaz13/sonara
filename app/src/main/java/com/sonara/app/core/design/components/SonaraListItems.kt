@@ -5,7 +5,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
@@ -135,17 +134,16 @@ fun SonaraAlbumCard(
 ) {
     val colors = SonaraTheme.colors
     val typography = SonaraTheme.typography
-    BoxWithConstraints(modifier = modifier.clickable(role = Role.Button, onClick = onClick)) {
-        val artworkSide = this.maxWidth - SonaraSpacing.s16
-        Column(
-            modifier = Modifier.padding(SonaraSpacing.s8),
-            verticalArrangement = Arrangement.spacedBy(SonaraSpacing.s4),
-        ) {
-            SonaraArtwork(trackId = artworkTrackId, size = artworkSide)
-            Text(text = title, style = typography.trackTitle, color = colors.foreground, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(text = artist, style = typography.metadata, color = colors.foregroundMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(text = plural(trackCount, "track").uppercase(), style = typography.microLabel, color = colors.foregroundMuted)
-        }
+    Column(
+        modifier = modifier
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(SonaraSpacing.s8),
+        verticalArrangement = Arrangement.spacedBy(SonaraSpacing.s4),
+    ) {
+        SonaraArtworkFill(trackId = artworkTrackId)
+        Text(text = title, style = typography.trackTitle, color = colors.foreground, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(text = artist, style = typography.metadata, color = colors.foregroundMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(text = plural(trackCount, "track").uppercase(), style = typography.microLabel, color = colors.foregroundMuted)
     }
 }
 

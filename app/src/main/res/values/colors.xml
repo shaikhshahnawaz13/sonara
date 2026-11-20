@@ -4,4 +4,9 @@
 <resources>
     <color name="sonara_background">#101010</color>
     <color name="sonara_accent">#C6FF00</color>
+
+    <!-- The official logo asset, exactly as supplied (sampled from branding/sonara-logo-source.webp).
+         Used only by the logo drawables and the launcher icon; UI accents keep using sonara_accent. -->
+    <color name="sonara_logo_lime">#CDFC11</color>
+    <color name="sonara_logo_background">#000000</color>
 </resources>

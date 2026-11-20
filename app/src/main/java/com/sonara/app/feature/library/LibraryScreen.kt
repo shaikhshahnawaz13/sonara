@@ -1,5 +1,20 @@
 package com.sonara.app.feature.library
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -20,9 +35,6 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -50,6 +62,7 @@ import com.sonara.app.core.design.components.SonaraTopBar
 import com.sonara.app.core.design.components.SonaraTrackRow
 import com.sonara.app.core.design.components.plural
 import com.sonara.app.core.navigation.LibraryCategory
+import com.sonara.app.core.navigation.categorySlideDirection
 import com.sonara.app.core.navigation.LocalSonaraNavigator
 import com.sonara.app.core.permissions.AudioAccessState
 import com.sonara.app.core.design.components.LocalSnackbar
@@ -59,7 +72,9 @@ import com.sonara.app.feature.common.LibraryEmptyState
 import com.sonara.app.feature.common.UiState
 import com.sonara.app.feature.common.appViewModel
 import com.sonara.app.feature.common.rememberPlaybackActions
-import com.sonara.app.feature.common.trackMenu
+import com.sonara.app.feature.common.rememberCurrentTrackId
+import com.sonara.app.feature.common.rememberTrackMenu
+import com.sonara.app.core.design.components.SonaraIcons
 
 @Composable
 fun LibraryScreen() {
@@ -81,9 +96,9 @@ fun LibraryScreen() {
         SonaraTopBar(
             title = "LIBRARY",
             actions = {
-                SonaraIconButton(Icons.Filled.Search, "Search", onClick = navigator::openSearch)
+                SonaraIconButton(SonaraIcons.Search, "Search", onClick = navigator::openSearch)
                 SonaraIconButton(
-                    icon = Icons.Filled.Refresh,
+                    icon = SonaraIcons.Refresh,
                     contentDescription = "Rescan library",
                     enabled = access == AudioAccessState.Granted && sync != SyncState.Scanning,
                     onClick = {
@@ -99,8 +114,24 @@ fun LibraryScreen() {
         }
         CategoryTabs(selected = category, onSelect = { navigator.libraryCategory.value = it })
         ScanStatus(sync)
-        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            when (category) {
+        val motion = SonaraTheme.motion
+        AnimatedContent(
+            targetState = category,
+            modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds(),
+            transitionSpec = {
+                if (motion.isOff) {
+                    EnterTransition.None togetherWith ExitTransition.None
+                } else {
+                    // Moving to a later category: the old content leaves to the left, the new one enters from the right.
+                    val direction = categorySlideDirection(initialState, targetState)
+                    (slideInHorizontally(animationSpec = motion.categorySpec<IntOffset>()) { width -> width * direction } togetherWith
+                        slideOutHorizontally(animationSpec = motion.categorySpec<IntOffset>()) { width -> -width * direction })
+                        .using(null)
+                }
+            },
+            label = "libraryCategory",
+        ) { shown ->
+            when (shown) {
                 LibraryCategory.Songs -> SongsTab(viewModel, songsState)
                 LibraryCategory.Albums -> AlbumsTab(viewModel, albumsState)
                 LibraryCategory.Artists -> ArtistsTab(viewModel, artistsState)
@@ -113,37 +144,75 @@ fun LibraryScreen() {
 @Composable
 private fun CategoryTabs(selected: LibraryCategory, onSelect: (LibraryCategory) -> Unit) {
     val colors = SonaraTheme.colors
-    Column {
+    val count = LibraryCategory.entries.size
+    // One lime bar travels between the labels. It is read only while placing, so the animation relayouts
+    // a single small node and recomposes nothing.
+    val indicator = animateFloatAsState(
+        targetValue = selected.ordinal.toFloat(),
+        animationSpec = SonaraTheme.motion.categorySpec<Float>(),
+        label = "libraryIndicator",
+    )
+    Box(modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.fillMaxWidth()) {
             LibraryCategory.entries.forEach { category ->
-                val isSelected = category == selected
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable(role = Role.Tab) { onSelect(category) }
-                        .semantics { this.selected = isSelected },
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .defaultMinSize(minHeight = SonaraSizes.minTouchTarget),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = category.label,
-                            style = SonaraTheme.typography.microLabel,
-                            color = if (isSelected) colors.accent else colors.foregroundMuted,
-                        )
-                    }
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(SonaraBorders.emphasis)
-                            .background(if (isSelected) colors.accent else colors.borderMuted),
-                    )
-                }
+                CategoryTab(
+                    category = category,
+                    isSelected = category == selected,
+                    onSelect = onSelect,
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .height(SonaraBorders.emphasis)
+                .background(colors.borderMuted),
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .layout { measurable, constraints ->
+                    val cell = constraints.maxWidth.toFloat() / count
+                    val placeable = measurable.measure(Constraints.fixed(cell.roundToInt(), SonaraBorders.emphasis.roundToPx()))
+                    layout(constraints.maxWidth, placeable.height) {
+                        placeable.placeRelative((indicator.value * cell).roundToInt(), 0)
+                    }
+                }
+                .background(colors.accent),
+        )
+    }
+}
+
+@Composable
+private fun CategoryTab(
+    category: LibraryCategory,
+    isSelected: Boolean,
+    onSelect: (LibraryCategory) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = SonaraTheme.colors
+    val labelColor by animateColorAsState(
+        targetValue = if (isSelected) colors.accent else colors.foregroundMuted,
+        animationSpec = SonaraTheme.motion.selectionColorSpec<Color>(),
+        label = "libraryLabelColor",
+    )
+    Column(
+        modifier = modifier
+            .clickable(role = Role.Tab) { onSelect(category) }
+            .semantics { this.selected = isSelected },
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .defaultMinSize(minHeight = SonaraSizes.minTouchTarget),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(text = category.label, style = SonaraTheme.typography.microLabel, color = labelColor)
+        }
+        // Reserves the space the shared indicator and rule are drawn in.
+        Spacer(modifier = Modifier.height(SonaraBorders.emphasis))
     }
 }
 
@@ -187,19 +256,19 @@ private fun SongsTab(viewModel: LibraryViewModel, listState: LazyListState) {
     val state by viewModel.songs.collectAsStateWithLifecycle()
     val navigator = LocalSonaraNavigator.current
     val actions = rememberPlaybackActions()
-    val playback by LocalAppContainer.current.playbackController.state.collectAsStateWithLifecycle()
+    val currentTrackId by rememberCurrentTrackId()
     TabContent(state, viewModel) { songs: List<TrackEntity> ->
         val ids = remember(songs) { songs.map { it.id } }
         LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-            itemsIndexed(items = songs, key = { _, track -> track.id }) { index, track ->
+            itemsIndexed(items = songs, key = { _, track -> track.id }, contentType = { _, _ -> "song" }) { index, track ->
                 SonaraTrackRow(
                     title = track.title,
                     subtitle = "${track.artist} · ${track.album}",
                     durationMs = track.durationMs,
                     artworkTrackId = track.id,
-                    isCurrent = playback.currentTrackId == track.id,
+                    isCurrent = currentTrackId == track.id,
                     onClick = { actions.play(ids, index) },
-                    menu = trackMenu(track, actions, navigator),
+                    menu = rememberTrackMenu(track, actions, navigator),
                 )
             }
         }
@@ -216,7 +285,7 @@ private fun AlbumsTab(viewModel: LibraryViewModel, gridState: LazyGridState) {
             columns = GridCells.Adaptive(minSize = 150.dp),
             modifier = Modifier.fillMaxSize().padding(horizontal = SonaraSpacing.s8),
         ) {
-            items(items = albums, key = { it.id }) { album ->
+            items(items = albums, key = { it.id }, contentType = { "album" }) { album ->
                 SonaraAlbumCard(
                     title = album.title,
                     artist = album.artist,
@@ -235,7 +304,7 @@ private fun ArtistsTab(viewModel: LibraryViewModel, listState: LazyListState) {
     val navigator = LocalSonaraNavigator.current
     TabContent(state, viewModel) { artists ->
         LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-            items(items = artists, key = { it.name }) { artist ->
+            items(items = artists, key = { it.name }, contentType = { "artist" }) { artist ->
                 SonaraArtistRow(
                     name = artist.name,
                     albumCount = artist.albumCount,
@@ -254,7 +323,7 @@ private fun GenresTab(viewModel: LibraryViewModel, listState: LazyListState) {
     val navigator = LocalSonaraNavigator.current
     TabContent(state, viewModel) { genres ->
         LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-            items(items = genres, key = { it.name ?: "~unknown~" }) { genre ->
+            items(items = genres, key = { it.name ?: "~unknown~" }, contentType = { "genre" }) { genre ->
                 SonaraListRow(
                     title = genre.displayName,
                     subtitle = plural(genre.trackCount, "track"),

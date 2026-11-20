@@ -46,7 +46,10 @@ class MainActivity : ComponentActivity() {
         )
 
         val artworkProvider = container.artworkProvider
-        val artworkLoader = ArtworkLoader { trackId, sizePx -> artworkProvider.load(trackId, sizePx) }
+        val artworkLoader = object : ArtworkLoader {
+            override fun peek(trackId: Long, sizePx: Int) = artworkProvider.peek(trackId, sizePx)
+            override suspend fun load(trackId: Long, sizePx: Int) = artworkProvider.load(trackId, sizePx)
+        }
 
         setContent {
             val settings by container.settingsRepository.settings.collectAsState(initial = SonaraSettings())

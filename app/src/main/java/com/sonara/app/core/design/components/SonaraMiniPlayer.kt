@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -50,7 +48,7 @@ fun SonaraMiniPlayer(
                 Text(text = artist, style = SonaraTheme.typography.metadata, color = colors.foregroundMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             SonaraIconButton(
-                icon = if (isPlaying) SonaraIcons.Pause else Icons.Filled.PlayArrow,
+                icon = if (isPlaying) SonaraIcons.Pause else SonaraIcons.Play,
                 contentDescription = if (isPlaying) "Pause" else "Play",
                 onClick = onTogglePlayPause,
             )

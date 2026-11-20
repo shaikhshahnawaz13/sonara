@@ -40,7 +40,8 @@ import com.sonara.app.data.model.SearchResults
 import com.sonara.app.feature.common.UiState
 import com.sonara.app.feature.common.appViewModel
 import com.sonara.app.feature.common.rememberPlaybackActions
-import com.sonara.app.feature.common.trackMenu
+import com.sonara.app.feature.common.rememberCurrentTrackId
+import com.sonara.app.feature.common.rememberTrackMenu
 
 @Composable
 fun SearchScreen() {
@@ -135,31 +136,31 @@ private fun RecentSearches(recent: List<String>, onPick: (String) -> Unit, onCle
 private fun ResultsList(results: SearchResults, onChosen: () -> Unit) {
     val navigator = LocalSonaraNavigator.current
     val actions = rememberPlaybackActions()
-    val playback by LocalAppContainer.current.playbackController.state.collectAsStateWithLifecycle()
+    val currentTrackId by rememberCurrentTrackId()
     val songIds = remember(results.songs) { results.songs.map { it.id } }
     val pad = Modifier.padding(horizontal = SonaraSpacing.s16)
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         if (results.songs.isNotEmpty()) {
             item(key = "h-songs") { SonaraSectionHeader("SONGS", pad) }
-            itemsIndexed(results.songs, key = { _, t -> "s-${t.id}" }) { index, track ->
+            itemsIndexed(results.songs, key = { _, t -> "s-${t.id}" }, contentType = { _, _ -> "song" }) { index, track ->
                 SonaraTrackRow(
                     title = track.title,
                     subtitle = "${track.artist} · ${track.album}",
                     durationMs = track.durationMs,
                     artworkTrackId = track.id,
-                    isCurrent = playback.currentTrackId == track.id,
+                    isCurrent = currentTrackId == track.id,
                     onClick = {
                         onChosen()
                         actions.play(songIds, index)
                     },
-                    menu = trackMenu(track, actions, navigator),
+                    menu = rememberTrackMenu(track, actions, navigator),
                 )
             }
         }
         if (results.albums.isNotEmpty()) {
             item(key = "h-albums") { SonaraSectionHeader("ALBUMS", pad) }
-            items(results.albums, key = { "a-${it.id}" }) { album ->
+            items(results.albums, key = { "a-${it.id}" }, contentType = { "album" }) { album ->
                 SonaraListRow(
                     title = album.title,
                     subtitle = "${album.artist} · ${album.trackCount} tracks",
@@ -172,7 +173,7 @@ private fun ResultsList(results: SearchResults, onChosen: () -> Unit) {
         }
         if (results.artists.isNotEmpty()) {
             item(key = "h-artists") { SonaraSectionHeader("ARTISTS", pad) }
-            items(results.artists, key = { "r-${it.name}" }) { artist ->
+            items(results.artists, key = { "r-${it.name}" }, contentType = { "artist" }) { artist ->
                 SonaraArtistRow(
                     name = artist.name,
                     albumCount = artist.albumCount,
@@ -187,7 +188,7 @@ private fun ResultsList(results: SearchResults, onChosen: () -> Unit) {
         }
         if (results.playlists.isNotEmpty()) {
             item(key = "h-playlists") { SonaraSectionHeader("PLAYLISTS", pad) }
-            items(results.playlists, key = { "p-${it.id}" }) { playlist ->
+            items(results.playlists, key = { "p-${it.id}" }, contentType = { "playlist" }) { playlist ->
                 SonaraListRow(
                     title = playlist.name,
                     subtitle = playlist.description ?: "Playlist",
@@ -200,7 +201,7 @@ private fun ResultsList(results: SearchResults, onChosen: () -> Unit) {
         }
         if (results.folders.isNotEmpty()) {
             item(key = "h-folders") { SonaraSectionHeader("FOLDERS", pad) }
-            items(results.folders, key = { "f-${it.path}" }) { folder ->
+            items(results.folders, key = { "f-${it.path}" }, contentType = { "folder" }) { folder ->
                 SonaraFolderRow(
                     name = folder.name,
                     location = folder.path,
