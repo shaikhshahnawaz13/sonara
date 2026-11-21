@@ -97,6 +97,24 @@ class PlaylistRepository(private val database: SonaraDatabase) {
         }
     }
 
+    /**
+     * Removes several entries in one transaction and closes the gaps. Only playlist entries go; the audio
+     * files are untouched. Returns how many entries were removed (ids not in this playlist count for nothing).
+     */
+    suspend fun removeEntries(playlistId: Long, entryIds: Collection<Long>, now: Long = System.currentTimeMillis()): Int {
+        if (entryIds.isEmpty()) return 0
+        return database.withTransaction {
+            var removed = 0
+            // Chunked to stay well under SQLite's bound-variable limit.
+            entryIds.distinct().chunked(REMOVE_CHUNK).forEach { removed += dao.deleteEntries(playlistId, it) }
+            if (removed > 0) {
+                renumber(playlistId)
+                dao.touch(playlistId, now)
+            }
+            removed
+        }
+    }
+
     /** Removes entries whose audio file is no longer in the library. Returns how many were removed. */
     suspend fun removeUnavailable(playlistId: Long, now: Long = System.currentTimeMillis()): Int =
         database.withTransaction {
@@ -129,5 +147,9 @@ class PlaylistRepository(private val database: SonaraDatabase) {
         dao.entriesOf(playlistId).forEachIndexed { index, entry ->
             if (entry.position != index) dao.setPosition(entry.id, index)
         }
+    }
+
+    private companion object {
+        const val REMOVE_CHUNK = 500
     }
 }

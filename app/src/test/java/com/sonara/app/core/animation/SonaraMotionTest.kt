@@ -160,4 +160,38 @@ class SonaraMotionTest {
         assertTrue(reducedSpec.durationMillis < MotionTokens.CATEGORY_MS)
         assertTrue(off.categorySpec<Float>() is SnapSpec<*>)
     }
+
+    @Test
+    fun menuOpensWithinTheTargetWindowAndClosesFaster() {
+        val open = (full.menuOpenSpec() as TweenSpec<*>).durationMillis
+        val close = (full.menuCloseSpec() as TweenSpec<*>).durationMillis
+        assertTrue("open $open", open in 220..300)
+        assertTrue("close $close", close in 180..240)
+        assertTrue(close < open)
+        assertTrue((full.menuOpenSpec() as TweenSpec<*>).easing === MotionTokens.MenuOpenEasing)
+        assertTrue((full.menuCloseSpec() as TweenSpec<*>).easing === MotionTokens.MenuCloseEasing)
+    }
+
+    @Test
+    fun menuMotionIsShorterWhenReducedAndSnapsWhenOff() {
+        assertEquals(156, (reduced.menuOpenSpec() as TweenSpec<*>).durationMillis)
+        assertEquals(120, (reduced.menuCloseSpec() as TweenSpec<*>).durationMillis)
+        assertTrue(off.menuOpenSpec() is SnapSpec<*>)
+        assertTrue(off.menuCloseSpec() is SnapSpec<*>)
+    }
+
+    @Test
+    fun menuEasingsStartAtZeroEndAtOneAndNeverGoBackwards() {
+        listOf(MotionTokens.MenuOpenEasing, MotionTokens.MenuCloseEasing).forEach { easing ->
+            assertEquals(0f, easing.transform(0f), 1e-4f)
+            assertEquals(1f, easing.transform(1f), 1e-4f)
+            var previous = 0f
+            for (i in 1..100) {
+                val v = easing.transform(i / 100f)
+                assertTrue(v >= previous - 1e-5f)
+                assertTrue("no overshoot", v <= 1f + 1e-5f)
+                previous = v
+            }
+        }
+    }
 }

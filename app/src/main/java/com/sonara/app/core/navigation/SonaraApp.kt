@@ -41,6 +41,7 @@ import com.sonara.app.feature.detail.FolderDetailScreen
 import com.sonara.app.feature.detail.GenreDetailScreen
 import com.sonara.app.feature.playlists.LocalPlaylistPicker
 import com.sonara.app.feature.playlists.PlaylistDetailScreen
+import com.sonara.app.feature.playlists.PlaylistSongPickerScreen
 import com.sonara.app.feature.playlists.PlaylistPicker
 import com.sonara.app.feature.playlists.PlaylistPickerHost
 import com.sonara.app.feature.search.SearchScreen
@@ -134,6 +135,13 @@ fun SonaraApp() {
             ) { entry ->
                 val playlistId = entry.arguments?.getLong(SonaraRoutes.ARG_PLAYLIST_ID) ?: return@composable
                 SonaraScreenSurface { PlaylistDetailScreen(playlistId) }
+            }
+            composable(
+                route = SonaraRoutes.PLAYLIST_ADD,
+                arguments = listOf(navArgument(SonaraRoutes.ARG_PLAYLIST_ID) { type = NavType.LongType }),
+            ) { entry ->
+                val playlistId = entry.arguments?.getLong(SonaraRoutes.ARG_PLAYLIST_ID) ?: return@composable
+                SonaraScreenSurface { PlaylistSongPickerScreen(playlistId) }
             }
             composable(
                 route = SonaraRoutes.ARTIST,

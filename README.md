@@ -131,3 +131,10 @@ All motion numbers live in `core/animation/SonaraMotion.kt` (`MotionTokens`). Co
 - In a playlist: play from any song, PLAY, SHUFFLE, ADD TO QUEUE, remove a song, reorder by dragging the grip (or MOVE UP / MOVE DOWN in the row menu).
 - Entries whose audio file is no longer in the library stay visible as "Unavailable track" and can be removed one by one or all at once; they are skipped when playing.
 - Playlists live in the existing Room tables `playlists` and `playlist_tracks` (no schema change, no migration), so they survive restarts.
+
+## M4.1 - Playlist UX refinement
+
+- **Overflow menu**: now a popup positioned from the tapped button's real window bounds. It covers the button, flips above it when there is no room below, and stays inside the screen and system bars. It grows out of the button's outline (260 ms) and folds back into it (200 ms); items appear in a short sequence. Back, tapping outside or choosing an action closes it; only one menu is open at a time. Reduced motion shortens it, "off" snaps.
+- **BROWSE SONGS / ADD SONGS**: opens a multi-select song picker (route `playlist/{id}/add`) with artwork, title, artist and album, a live "N SELECTED" count, SELECT ALL, DESELECT ALL and ADD TO PLAYLIST. Songs already in the playlist are shown as IN PLAYLIST and cannot be selected, so nothing is duplicated.
+- **EDIT mode**: EDIT in the playlist's top bar. Rows get checkboxes; the bottom area offers SELECT ALL, CLEAR SELECTION, REMOVE SELECTED (with confirmation) and ADD SONGS. Dragging, MOVE UP / DOWN and the per-song menu still work. DONE or Back leaves without changing anything. Removing only deletes playlist entries, never audio files.
+- No schema change.

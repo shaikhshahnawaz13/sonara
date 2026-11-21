@@ -15,7 +15,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.sonara.app.core.common.formatDuration
@@ -78,18 +83,39 @@ fun SonaraTrackRow(
     menu: List<SonaraMenuAction> = emptyList(),
     /** Extra control after the menu, such as a reorder handle. */
     trailing: @Composable () -> Unit = {},
+    /** Null outside selection mode. Otherwise a checkbox leads the row and a selected row is marked. */
+    selected: Boolean? = null,
+    /** In selection mode: the song is already there and cannot be picked (e.g. already in the playlist). */
+    locked: Boolean = false,
+    lockedLabel: String = "ADDED",
 ) {
     val colors = SonaraTheme.colors
     val typography = SonaraTheme.typography
+    val marked = selected == true && !locked
     Row(
         modifier = modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = 56.dp)
+            .then(
+                if (selected != null) {
+                    Modifier
+                        .background(if (marked) colors.surfaceRaised else Color.Transparent)
+                        .drawBehind {
+                            if (marked) drawRect(colors.accent, size = Size(SELECTED_BAR.toPx(), size.height))
+                        }
+                        .semantics { this.selected = marked }
+                } else {
+                    Modifier
+                },
+            )
             .clickable(role = Role.Button, onClick = onClick)
             .padding(start = SonaraSpacing.s16, end = SonaraSpacing.s4, top = SonaraSpacing.s4, bottom = SonaraSpacing.s4),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(SonaraSpacing.s12),
     ) {
+        if (selected != null) {
+            SonaraCheckbox(checked = selected || locked, enabled = !locked)
+        }
         if (leadingNumber != null) {
             Box(modifier = Modifier.width(32.dp), contentAlignment = Alignment.Center) {
                 Text(
@@ -105,7 +131,7 @@ fun SonaraTrackRow(
             Text(
                 text = title,
                 style = typography.trackTitle,
-                color = if (isCurrent) colors.accent else if (dimmed) colors.foregroundMuted else colors.foreground,
+                color = if (isCurrent) colors.accent else if (dimmed || locked) colors.foregroundMuted else colors.foreground,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -117,7 +143,9 @@ fun SonaraTrackRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        if (durationMs != null) {
+        if (locked) {
+            Text(text = lockedLabel, style = typography.microLabel, color = colors.foregroundMuted)
+        } else if (durationMs != null) {
             Text(text = formatDuration(durationMs), style = typography.metadata, color = colors.foregroundMuted)
         }
         if (menu.isNotEmpty()) {
@@ -302,3 +330,6 @@ fun SonaraTile(
 }
 
 fun plural(count: Int, noun: String): String = if (count == 1) "1 $noun" else "$count ${noun}s"
+
+/** Width of the accent bar that marks a selected row. */
+private val SELECTED_BAR = 3.dp

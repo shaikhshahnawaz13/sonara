@@ -13,12 +13,14 @@ object SonaraRoutes {
 
     const val ALBUM = "album/{$ARG_ALBUM_ID}"
     const val PLAYLIST = "playlist/{$ARG_PLAYLIST_ID}"
+    const val PLAYLIST_ADD = "playlist/{$ARG_PLAYLIST_ID}/add"
     const val ARTIST = "artist?$ARG_NAME={$ARG_NAME}"
     const val GENRE = "genre?$ARG_NAME={$ARG_NAME}"
     const val FOLDER = "folder?$ARG_PATH={$ARG_PATH}&$ARG_RECURSIVE={$ARG_RECURSIVE}"
 
     fun album(albumId: Long) = "album/$albumId"
     fun playlist(playlistId: Long) = "playlist/$playlistId"
+    fun playlistAdd(playlistId: Long) = "playlist/$playlistId/add"
     fun artist(name: String) = "artist?$ARG_NAME=${encode(name)}"
     fun genre(name: String) = "genre?$ARG_NAME=${encode(name)}"
     fun folder(path: String, recursive: Boolean) = "folder?$ARG_PATH=${encode(path)}&$ARG_RECURSIVE=$recursive"

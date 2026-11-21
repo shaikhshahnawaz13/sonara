@@ -50,4 +50,10 @@ class SonaraRoutesTest {
     fun playlistRouteCarriesTheId() {
         assertEquals("playlist/42", SonaraRoutes.playlist(42))
     }
+
+    @Test
+    fun playlistSongPickerRouteCarriesTheId() {
+        assertEquals("playlist/42/add", SonaraRoutes.playlistAdd(42))
+        assertEquals("playlist/{playlistId}/add", SonaraRoutes.PLAYLIST_ADD)
+    }
 }

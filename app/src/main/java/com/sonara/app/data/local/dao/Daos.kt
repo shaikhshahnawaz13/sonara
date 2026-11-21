@@ -96,6 +96,10 @@ interface PlaylistDao {
     @Query("DELETE FROM playlist_tracks WHERE id = :entryId AND playlistId = :playlistId")
     suspend fun deleteEntry(playlistId: Long, entryId: Long)
 
+    /** Removes the listed entries of one playlist. Entries of other playlists and audio files are never touched. */
+    @Query("DELETE FROM playlist_tracks WHERE playlistId = :playlistId AND id IN (:entryIds)")
+    suspend fun deleteEntries(playlistId: Long, entryIds: List<Long>): Int
+
     @Query(
         "DELETE FROM playlist_tracks WHERE playlistId = :playlistId " +
             "AND trackId NOT IN (SELECT id FROM tracks)",

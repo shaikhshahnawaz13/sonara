@@ -1,5 +1,6 @@
 package com.sonara.app.feature.playlists
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -54,9 +55,10 @@ import com.sonara.app.core.design.components.SonaraLoadingState
 import com.sonara.app.core.design.components.SonaraMenuAction
 import com.sonara.app.core.design.components.SonaraNameDialog
 import com.sonara.app.core.design.components.SonaraOverflowMenu
+import com.sonara.app.core.design.components.SonaraTextAction
 import com.sonara.app.core.design.components.SonaraTopBar
 import com.sonara.app.core.design.components.SonaraTrackRow
-import com.sonara.app.core.navigation.LibraryCategory
+import com.sonara.app.core.design.components.plural
 import com.sonara.app.core.navigation.LocalSonaraNavigator
 import com.sonara.app.data.model.PlaylistEntry
 import com.sonara.app.data.model.PlaylistSummary
@@ -79,6 +81,7 @@ fun PlaylistDetailScreen(playlistId: Long) {
     val snackbar = LocalSnackbar.current
     var dialog by remember { mutableStateOf<DetailDialog?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
+    var editing by remember { mutableStateOf(false) }
     val summary = (state as? UiState.Content)?.data?.summary
 
     val topMenu = remember(summary?.name, summary?.unavailableCount) {
@@ -93,12 +96,27 @@ fun PlaylistDetailScreen(playlistId: Long) {
         }
     }
 
+    // Back leaves edit mode first. Nothing is changed by leaving: removals only happen on REMOVE SELECTED.
+    BackHandler(enabled = editing) { editing = false }
+    LaunchedEffect(summary == null) { if (summary == null) editing = false }
+
     Column(modifier = Modifier.fillMaxSize()) {
-        SonaraTopBar(
-            title = "PLAYLIST",
-            onBack = navigator::back,
-            actions = { SonaraOverflowMenu(actions = topMenu, contentDescription = "Playlist actions") },
-        )
+        if (editing) {
+            SonaraTopBar(
+                title = "EDIT PLAYLIST",
+                onBack = { editing = false },
+                actions = { SonaraTextAction("DONE", onClick = { editing = false }) },
+            )
+        } else {
+            SonaraTopBar(
+                title = "PLAYLIST",
+                onBack = navigator::back,
+                actions = {
+                    if (summary != null) SonaraTextAction("EDIT", onClick = { editing = true })
+                    SonaraOverflowMenu(actions = topMenu, contentDescription = "Playlist actions")
+                },
+            )
+        }
         when (val current = state) {
             UiState.Loading -> SonaraLoadingState()
             is UiState.Error -> SonaraErrorState(current.message, onRetry = viewModel::retry)
@@ -107,7 +125,7 @@ fun PlaylistDetailScreen(playlistId: Long) {
                 if (detail.summary == null) {
                     SonaraEmptyState("PLAYLIST NOT FOUND", "This playlist no longer exists.")
                 } else {
-                    PlaylistBody(detail.summary, detail.entries, viewModel)
+                    PlaylistBody(detail.summary, detail.entries, viewModel, editing)
                 }
             }
         }
@@ -169,6 +187,7 @@ private fun PlaylistBody(
     summary: PlaylistSummary,
     entries: List<PlaylistEntry>,
     viewModel: PlaylistDetailViewModel,
+    editing: Boolean,
 ) {
     val navigator = LocalSonaraNavigator.current
     val actions = rememberPlaybackActions()
@@ -179,6 +198,12 @@ private fun PlaylistBody(
     val motion = SonaraTheme.motion
     val density = LocalDensity.current
     val haptics = LocalHapticFeedback.current
+
+    var selection by remember { mutableStateOf(Selection.NONE) }
+    var confirmRemove by remember { mutableStateOf(false) }
+    // Leaving edit mode drops the selection; an entry that disappears drops out of it too.
+    LaunchedEffect(editing) { if (!editing) selection = Selection.NONE }
+    LaunchedEffect(entries) { selection = selection.retainOnly(entries.map { it.entryId }) }
 
     val listState = rememberLazyListState()
     val reorder = remember(listState) { EntryReorder(listState, headerCount = 1) }
@@ -205,7 +230,8 @@ private fun PlaylistBody(
         }
     }
 
-    LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize()) {
+    LazyColumn(state = listState, modifier = Modifier.weight(1f).fillMaxWidth()) {
         item(key = "header") {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(SonaraSpacing.s16),
@@ -218,7 +244,7 @@ private fun PlaylistBody(
                         Text(playlistMeta(summary), style = typography.microLabel, color = colors.accent)
                     }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(SonaraSpacing.s8)) {
+                if (!editing) Row(horizontalArrangement = Arrangement.spacedBy(SonaraSpacing.s8)) {
                     val hasTracks = playableIds.isNotEmpty()
                     SonaraButton("PLAY", onClick = { actions.play(playableIds, 0) }, enabled = hasTracks, emphasized = true, modifier = Modifier.weight(1f))
                     SonaraButton("SHUFFLE", onClick = { actions.shuffle(playableIds) }, enabled = hasTracks, modifier = Modifier.weight(1f))
@@ -232,7 +258,7 @@ private fun PlaylistBody(
                     title = "THIS PLAYLIST IS EMPTY",
                     body = "Add songs from any song menu with ADD TO PLAYLIST, or from an album, artist, folder or search result.",
                     actionLabel = "BROWSE SONGS",
-                    onAction = { navigator.openLibrary(LibraryCategory.Songs) },
+                    onAction = { navigator.openPlaylistSongPicker(summary.id) },
                 )
             }
         }
@@ -283,7 +309,12 @@ private fun PlaylistBody(
                     durationMs = track.durationMs,
                     artworkTrackId = track.id,
                     isCurrent = currentTrackId == track.id,
-                    onClick = { actions.play(playableIds, playableIndexOf[entry.entryId] ?: 0) },
+                    onClick = if (editing) {
+                        { selection = selection.toggle(entry.entryId) }
+                    } else {
+                        { actions.play(playableIds, playableIndexOf[entry.entryId] ?: 0) }
+                    },
+                    selected = if (editing) entry.entryId in selection else null,
                     menu = rememberTrackMenu(track, actions, navigator, extra = extra),
                     trailing = handle,
                     modifier = rowModifier,
@@ -295,12 +326,72 @@ private fun PlaylistBody(
                     durationMs = null,
                     artworkTrackId = null,
                     dimmed = true,
-                    onClick = { snackbar.show("THIS FILE IS NOT IN YOUR LIBRARY") },
+                    onClick = if (editing) {
+                        { selection = selection.toggle(entry.entryId) }
+                    } else {
+                        { snackbar.show("THIS FILE IS NOT IN YOUR LIBRARY") }
+                    },
+                    selected = if (editing) entry.entryId in selection else null,
                     menu = extra,
                     trailing = handle,
                     modifier = rowModifier,
                 )
             }
+        }
+    }
+    if (editing) {
+        val allIds = remember(shown) { shown.map { it.entryId } }
+        EditActionBar(
+            selection = selection,
+            allIds = allIds,
+            onSelectAll = { selection = selection.selectAll(allIds) },
+            onClear = { selection = selection.clear() },
+            onRemove = { confirmRemove = true },
+            onAddSongs = { navigator.openPlaylistSongPicker(summary.id) },
+        )
+    }
+    }
+    if (confirmRemove) {
+        val count = selection.count
+        SonaraConfirmDialog(
+            title = "REMOVE FROM PLAYLIST",
+            body = "Remove ${plural(count, "song")} from \"${summary.name}\"? Your audio files are not deleted; " +
+                "only the playlist entries are removed.",
+            confirmLabel = "REMOVE",
+            onConfirm = {
+                confirmRemove = false
+                viewModel.removeEntries(selection.ids) { removed ->
+                    selection = Selection.NONE
+                    snackbar.show("REMOVED $removed FROM PLAYLIST")
+                }
+            },
+            onDismiss = { confirmRemove = false },
+        )
+    }
+}
+
+/** The contextual area of edit mode: how many are selected, select/clear, and the two actions that use the selection. */
+@Composable
+private fun EditActionBar(
+    selection: Selection,
+    allIds: List<Long>,
+    onSelectAll: () -> Unit,
+    onClear: () -> Unit,
+    onRemove: () -> Unit,
+    onAddSongs: () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth().background(SonaraTheme.colors.background)) {
+        BarDivider()
+        SelectionCountRow(count = selection.count) {
+            SonaraTextAction("SELECT ALL", onClick = onSelectAll, enabled = !selection.coversAll(allIds) && allIds.isNotEmpty())
+            SonaraTextAction("CLEAR SELECTION", onClick = onClear, enabled = !selection.isEmpty)
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(start = SonaraSpacing.s16, end = SonaraSpacing.s16, bottom = SonaraSpacing.s12),
+            horizontalArrangement = Arrangement.spacedBy(SonaraSpacing.s8),
+        ) {
+            SonaraButton("REMOVE SELECTED", onClick = onRemove, enabled = !selection.isEmpty, modifier = Modifier.weight(1f))
+            SonaraButton("ADD SONGS", onClick = onAddSongs, emphasized = true, modifier = Modifier.weight(1f))
         }
     }
 }

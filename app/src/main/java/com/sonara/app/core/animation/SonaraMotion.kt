@@ -37,6 +37,10 @@ object MotionTokens {
     /** Library category change: content slide and indicator travel. Inside the 250-350 ms target. */
     const val CATEGORY_MS = 300
 
+    /** Overflow menu: the surface grows out of its button over this long, and folds back a little faster. */
+    const val MENU_OPEN_MS = 260
+    const val MENU_CLOSE_MS = 200
+
     /** Tab travel: one page takes this long when starting from rest. */
     const val TAB_TRAVEL_BASE_MS = 380
 
@@ -55,6 +59,12 @@ object MotionTokens {
 
     /** Quiet curve for small property changes (colour, press compression). */
     val StandardEasing: Easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
+
+    /** Menu opening: quick departure from the button, soft landing at full size. No overshoot. */
+    val MenuOpenEasing: Easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
+
+    /** Menu closing: the mirror of opening, so the fold-back reads as the same movement reversed. */
+    val MenuCloseEasing: Easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)
 
     // Springs. A damping ratio of 1 is critically damped: it settles without any overshoot.
     const val SPRING_DAMPING = 1f
@@ -127,6 +137,12 @@ class SonaraMotion(val level: MotionLevel) {
      * bottom navigation, with no overshoot. Reduced motion shortens it; off snaps.
      */
     fun <T> categorySpec(): FiniteAnimationSpec<T> = timed(MotionTokens.CATEGORY_MS, MotionTokens.TabTravelEasing)
+
+    /** Progress 0 to 1 of an overflow menu opening out of its button. Off snaps. */
+    fun menuOpenSpec(): FiniteAnimationSpec<Float> = timed(MotionTokens.MENU_OPEN_MS, MotionTokens.MenuOpenEasing)
+
+    /** Progress 1 to 0 of an overflow menu folding back into its button. Off snaps. */
+    fun menuCloseSpec(): FiniteAnimationSpec<Float> = timed(MotionTokens.MENU_CLOSE_MS, MotionTokens.MenuCloseEasing)
 
     fun <T> selectionColorSpec(): FiniteAnimationSpec<T> =
         timed(MotionTokens.SELECTION_COLOR_MS, MotionTokens.StandardEasing)
