@@ -15,6 +15,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavType
@@ -39,7 +40,11 @@ import com.sonara.app.feature.detail.AlbumDetailScreen
 import com.sonara.app.feature.detail.ArtistDetailScreen
 import com.sonara.app.feature.detail.FolderDetailScreen
 import com.sonara.app.feature.detail.GenreDetailScreen
+import com.sonara.app.feature.player.PlayerOverlay
+import com.sonara.app.feature.player.PlayerSheetState
+import com.sonara.app.feature.player.rememberPlayerSheetState
 import com.sonara.app.feature.playlists.LocalPlaylistPicker
+import kotlinx.coroutines.launch
 import com.sonara.app.feature.playlists.PlaylistDetailScreen
 import com.sonara.app.feature.playlists.PlaylistSongPickerScreen
 import com.sonara.app.feature.playlists.PlaylistPicker
@@ -67,7 +72,12 @@ fun SonaraApp() {
     val snackbar = remember { SonaraSnackbarState() }
     val libraryCategory = remember { mutableStateOf(LibraryCategory.Songs) }
     val playlistPicker = remember { PlaylistPicker() }
+    val playerSheet = rememberPlayerSheetState()
+    val playerScope = rememberCoroutineScope()
     val currentMotion by rememberUpdatedState(motion)
+    val openPlayer: () -> Unit = {
+        if (!playerSheet.expanded) playerScope.launch { playerSheet.expand(currentMotion.playerExpandSpec()) }
+    }
     val navigator = remember(navController, tabs) {
         SonaraNavigator(libraryCategory, navController, tabs) { currentMotion }
     }
@@ -84,7 +94,7 @@ fun SonaraApp() {
         snackbarHost = { SonaraSnackbarHost(snackbar) },
         bottomBar = {
             Column {
-                AppMiniPlayer(applyNavigationInset = !onTabs)
+                AppMiniPlayer(applyNavigationInset = !onTabs, sheet = playerSheet, onExpand = openPlayer)
                 if (onTabs) {
                     SonaraBottomNavigation(
                         items = primaryNavItems,
@@ -171,6 +181,8 @@ fun SonaraApp() {
         }
     }
     PlaylistPickerHost(playlistPicker)
+    // After the Scaffold, so it draws over the navigation and takes Back before anything beneath it.
+    PlayerOverlay(playerSheet)
     }
 }
 
@@ -185,9 +197,9 @@ private fun TabsBackHandler(onTabs: Boolean, tabs: SonaraTabsState, motion: Sona
     }
 }
 
-/** Basic now-playing bar above the navigation; shown only while the playback service has a track loaded. */
+/** Now-playing bar above the navigation; shown only while the playback service has a track loaded. */
 @Composable
-private fun AppMiniPlayer(applyNavigationInset: Boolean) {
+private fun AppMiniPlayer(applyNavigationInset: Boolean, sheet: PlayerSheetState, onExpand: () -> Unit) {
     val controller = LocalAppContainer.current.playbackController
     val state by controller.state.collectAsState()
     if (!state.connected || !state.hasMedia) return
@@ -195,10 +207,14 @@ private fun AppMiniPlayer(applyNavigationInset: Boolean) {
         trackId = state.currentTrackId,
         title = state.title.orEmpty(),
         artist = state.artist.orEmpty(),
-        isPlaying = state.isPlaying,
+        showPause = state.showsPause,
+        buffering = state.isWaitingToPlay,
         canSkipNext = state.hasNext,
         onTogglePlayPause = controller::togglePlayPause,
         onSkipNext = controller::skipToNext,
+        onExpand = onExpand,
+        hidden = sheet.overlayShown,
+        onBounds = sheet::updateMiniBounds,
         modifier = if (applyNavigationInset) Modifier.windowInsetsPadding(WindowInsets.navigationBars) else Modifier,
     )
 }

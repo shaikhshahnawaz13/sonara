@@ -1,6 +1,21 @@
 package com.sonara.app.feature.playlists
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.ui.unit.IntSize
+import com.sonara.app.core.animation.SonaraMotion
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -101,22 +116,47 @@ fun PlaylistDetailScreen(playlistId: Long) {
     LaunchedEffect(summary == null) { if (summary == null) editing = false }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        if (editing) {
-            SonaraTopBar(
-                title = "EDIT PLAYLIST",
-                onBack = { editing = false },
-                actions = { SonaraTextAction("DONE", onClick = { editing = false }) },
-            )
-        } else {
-            SonaraTopBar(
-                title = "PLAYLIST",
-                onBack = navigator::back,
-                actions = {
-                    if (summary != null) SonaraTextAction("EDIT", onClick = { editing = true })
+        // One top bar for both modes, so the bar itself never swaps: its title and EDIT/DONE slide into
+        // each other, and the playlist menu makes room for DONE by folding away sideways.
+        val motion = SonaraTheme.motion
+        SonaraTopBar(
+            title = {
+                AnimatedContent(
+                    targetState = editing,
+                    transitionSpec = { slideSwap(targetState, motion) },
+                    label = "playlistTitle",
+                ) { isEditing ->
+                    Text(
+                        text = if (isEditing) "EDIT PLAYLIST" else "PLAYLIST",
+                        style = SonaraTheme.typography.screenTitle,
+                        color = SonaraTheme.colors.foreground,
+                        maxLines = 1,
+                    )
+                }
+            },
+            onBack = if (editing) ({ editing = false }) else navigator::back,
+            actions = {
+                if (summary != null) {
+                    AnimatedContent(
+                        targetState = editing,
+                        transitionSpec = { slideSwap(targetState, motion) },
+                        label = "editDone",
+                    ) { isEditing ->
+                        SonaraTextAction(
+                            label = if (isEditing) "DONE" else "EDIT",
+                            onClick = { editing = !isEditing },
+                        )
+                    }
+                }
+                AnimatedVisibility(
+                    visible = !editing && summary != null,
+                    enter = expandHorizontally(animationSpec = motion.editSpec<IntSize>()),
+                    exit = shrinkHorizontally(animationSpec = motion.editSpec<IntSize>()),
+                ) {
                     SonaraOverflowMenu(actions = topMenu, contentDescription = "Playlist actions")
-                },
-            )
-        }
+                }
+            },
+        )
         when (val current = state) {
             UiState.Loading -> SonaraLoadingState()
             is UiState.Error -> SonaraErrorState(current.message, onRetry = viewModel::retry)
@@ -199,6 +239,20 @@ private fun PlaylistBody(
     val density = LocalDensity.current
     val haptics = LocalHapticFeedback.current
 
+    val motion2 = SonaraTheme.motion
+    // Checkboxes: the column opens and closes with this value (read while measuring, not composing).
+    val reveal = remember { Animatable(if (editing) 1f else 0f) }
+    val revealValue = remember { { reveal.value } }
+    var checksVisible by remember { mutableStateOf(editing) }
+    LaunchedEffect(editing) {
+        if (editing) {
+            checksVisible = true
+            reveal.animateTo(1f, motion2.editSpec())
+        } else {
+            reveal.animateTo(0f, motion2.editSpec())
+            checksVisible = false
+        }
+    }
     var selection by remember { mutableStateOf(Selection.NONE) }
     var confirmRemove by remember { mutableStateOf(false) }
     // Leaving edit mode drops the selection; an entry that disappears drops out of it too.
@@ -244,11 +298,17 @@ private fun PlaylistBody(
                         Text(playlistMeta(summary), style = typography.microLabel, color = colors.accent)
                     }
                 }
-                if (!editing) Row(horizontalArrangement = Arrangement.spacedBy(SonaraSpacing.s8)) {
-                    val hasTracks = playableIds.isNotEmpty()
-                    SonaraButton("PLAY", onClick = { actions.play(playableIds, 0) }, enabled = hasTracks, emphasized = true, modifier = Modifier.weight(1f))
-                    SonaraButton("SHUFFLE", onClick = { actions.shuffle(playableIds) }, enabled = hasTracks, modifier = Modifier.weight(1f))
-                    SonaraButton("ADD TO QUEUE", onClick = { actions.addToQueue(playableIds, summary.name) }, enabled = hasTracks, modifier = Modifier.weight(1.4f))
+                AnimatedVisibility(
+                    visible = !editing,
+                    enter = expandVertically(animationSpec = motion2.editSpec<IntSize>()),
+                    exit = shrinkVertically(animationSpec = motion2.editSpec<IntSize>()),
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(SonaraSpacing.s8)) {
+                        val hasTracks = playableIds.isNotEmpty()
+                        SonaraButton("PLAY", onClick = { actions.play(playableIds, 0) }, enabled = hasTracks, emphasized = true, modifier = Modifier.weight(1f))
+                        SonaraButton("SHUFFLE", onClick = { actions.shuffle(playableIds) }, enabled = hasTracks, modifier = Modifier.weight(1f))
+                        SonaraButton("ADD TO QUEUE", onClick = { actions.addToQueue(playableIds, summary.name) }, enabled = hasTracks, modifier = Modifier.weight(1.4f))
+                    }
                 }
             }
         }
@@ -314,7 +374,8 @@ private fun PlaylistBody(
                     } else {
                         { actions.play(playableIds, playableIndexOf[entry.entryId] ?: 0) }
                     },
-                    selected = if (editing) entry.entryId in selection else null,
+                    selected = if (checksVisible) entry.entryId in selection else null,
+                    selectionReveal = revealValue,
                     menu = rememberTrackMenu(track, actions, navigator, extra = extra),
                     trailing = handle,
                     modifier = rowModifier,
@@ -331,7 +392,8 @@ private fun PlaylistBody(
                     } else {
                         { snackbar.show("THIS FILE IS NOT IN YOUR LIBRARY") }
                     },
-                    selected = if (editing) entry.entryId in selection else null,
+                    selected = if (checksVisible) entry.entryId in selection else null,
+                    selectionReveal = revealValue,
                     menu = extra,
                     trailing = handle,
                     modifier = rowModifier,
@@ -339,8 +401,13 @@ private fun PlaylistBody(
             }
         }
     }
-    if (editing) {
-        val allIds = remember(shown) { shown.map { it.entryId } }
+    val allIds = remember(shown) { shown.map { it.entryId } }
+    // The list gives up the bar's height gradually, from the bottom, so it never jumps and its scroll position stays.
+    AnimatedVisibility(
+        visible = editing,
+        enter = expandVertically(animationSpec = motion2.editSpec<IntSize>()),
+        exit = shrinkVertically(animationSpec = motion2.editSpec<IntSize>()),
+    ) {
         EditActionBar(
             selection = selection,
             allIds = allIds,
@@ -431,6 +498,17 @@ private fun DragHandle(
             modifier = Modifier.size(SonaraSizes.iconStandard),
         )
     }
+}
+
+/**
+ * Slide the new content in from below and the old one out above when [entering] edit mode, and the other way
+ * round when leaving. Clipped to the size of the slot; no fade.
+ */
+private fun AnimatedContentTransitionScope<Boolean>.slideSwap(entering: Boolean, motion: SonaraMotion): ContentTransform {
+    val direction = if (entering) 1 else -1
+    return (slideInVertically(animationSpec = motion.editSpec<IntOffset>()) { it * direction } togetherWith
+        slideOutVertically(animationSpec = motion.editSpec<IntOffset>()) { -it * direction })
+        .using(SizeTransform(clip = true) { _, _ -> motion.editSpec<IntSize>() })
 }
 
 private const val SETTLE_TIMEOUT_MS = 1_500L

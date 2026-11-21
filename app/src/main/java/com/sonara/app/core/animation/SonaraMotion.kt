@@ -41,6 +41,16 @@ object MotionTokens {
     const val MENU_OPEN_MS = 260
     const val MENU_CLOSE_MS = 200
 
+    /** Mini-player to Full Player: one surface grows over this long, and shrinks back a little faster. */
+    const val PLAYER_EXPAND_MS = 420
+    const val PLAYER_COLLAPSE_MS = 340
+
+    /** Playlist edit mode: checkbox column, bottom bar and header controls share this duration. */
+    const val EDIT_MS = 280
+
+    /** Queue panel inside the Full Player. */
+    const val QUEUE_PANEL_MS = 300
+
     /** Tab travel: one page takes this long when starting from rest. */
     const val TAB_TRAVEL_BASE_MS = 380
 
@@ -59,6 +69,12 @@ object MotionTokens {
 
     /** Quiet curve for small property changes (colour, press compression). */
     val StandardEasing: Easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
+
+    /** Player expansion: soft start, long soft landing, no overshoot. Paired with the tab-travel feel. */
+    val PlayerExpandEasing: Easing = CubicBezierEasing(0.3f, 0f, 0.1f, 1f)
+
+    /** Player collapse: the mirror of expansion. */
+    val PlayerCollapseEasing: Easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)
 
     /** Menu opening: quick departure from the button, soft landing at full size. No overshoot. */
     val MenuOpenEasing: Easing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
@@ -143,6 +159,18 @@ class SonaraMotion(val level: MotionLevel) {
 
     /** Progress 1 to 0 of an overflow menu folding back into its button. Off snaps. */
     fun menuCloseSpec(): FiniteAnimationSpec<Float> = timed(MotionTokens.MENU_CLOSE_MS, MotionTokens.MenuCloseEasing)
+
+    /** Progress 0 to 1 of the Full Player opening out of the mini-player. Off snaps. */
+    fun playerExpandSpec(): FiniteAnimationSpec<Float> = timed(MotionTokens.PLAYER_EXPAND_MS, MotionTokens.PlayerExpandEasing)
+
+    /** Progress 1 to 0 of the Full Player folding back into the mini-player. Off snaps. */
+    fun playerCollapseSpec(): FiniteAnimationSpec<Float> = timed(MotionTokens.PLAYER_COLLAPSE_MS, MotionTokens.PlayerCollapseEasing)
+
+    /** Edit-mode transition of a playlist: checkbox column, bottom bar, header controls. */
+    fun <T> editSpec(): FiniteAnimationSpec<T> = timed(MotionTokens.EDIT_MS, MotionTokens.StandardEasing)
+
+    /** The queue panel sliding over the Full Player. */
+    fun <T> queuePanelSpec(): FiniteAnimationSpec<T> = timed(MotionTokens.QUEUE_PANEL_MS, MotionTokens.StandardEasing)
 
     fun <T> selectionColorSpec(): FiniteAnimationSpec<T> =
         timed(MotionTokens.SELECTION_COLOR_MS, MotionTokens.StandardEasing)

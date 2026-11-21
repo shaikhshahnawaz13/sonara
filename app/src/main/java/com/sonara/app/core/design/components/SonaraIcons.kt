@@ -193,4 +193,99 @@ object SonaraIcons {
             }
         }
     }
+
+    /** Mirror of [SkipNext]: bar on the left, triangle pointing left. */
+    val SkipPrevious: ImageVector by lazy {
+        icon("SkipPrevious") {
+            solid {
+                moveTo(19f, 5f); lineTo(8f, 12f); lineTo(19f, 19f); close()
+                moveTo(7.5f, 5f); horizontalLineToRelative(-2.5f); verticalLineToRelative(14f); horizontalLineToRelative(2.5f); close()
+            }
+        }
+    }
+
+    /** Two crossing arrows. */
+    val Shuffle: ImageVector by lazy {
+        icon("Shuffle") {
+            line {
+                moveTo(3f, 7f); lineTo(8f, 7f); lineTo(16f, 17f); lineTo(20f, 17f)
+                moveTo(3f, 17f); lineTo(8f, 17f); lineTo(10.5f, 13.8f)
+                moveTo(13.5f, 10.2f); lineTo(16f, 7f); lineTo(20f, 7f)
+                moveTo(17.5f, 4.5f); lineTo(20.5f, 7f); lineTo(17.5f, 9.5f)
+                moveTo(17.5f, 14.5f); lineTo(20.5f, 17f); lineTo(17.5f, 19.5f)
+            }
+        }
+    }
+
+    /** A loop with an arrow head. */
+    val Repeat: ImageVector by lazy {
+        icon("Repeat") {
+            line {
+                moveTo(4f, 11f); lineTo(4f, 8f); lineTo(18f, 8f)
+                moveTo(15f, 5f); lineTo(18.5f, 8f); lineTo(15f, 11f)
+                moveTo(20f, 13f); lineTo(20f, 16f); lineTo(6f, 16f)
+                moveTo(9f, 13f); lineTo(5.5f, 16f); lineTo(9f, 19f)
+            }
+        }
+    }
+
+    /** [Repeat] with a "1" in the middle. */
+    val RepeatOne: ImageVector by lazy {
+        icon("RepeatOne") {
+            line {
+                moveTo(4f, 11f); lineTo(4f, 8f); lineTo(18f, 8f)
+                moveTo(15f, 5f); lineTo(18.5f, 8f); lineTo(15f, 11f)
+                moveTo(20f, 13f); lineTo(20f, 16f); lineTo(6f, 16f)
+                moveTo(9f, 13f); lineTo(5.5f, 16f); lineTo(9f, 19f)
+                moveTo(11f, 10.5f); lineTo(12.5f, 9.5f); lineTo(12.5f, 14.5f)
+            }
+        }
+    }
+
+    /** A list: three bars with markers. */
+    val Queue: ImageVector by lazy {
+        icon("Queue") {
+            line {
+                moveTo(9f, 7f); lineTo(20f, 7f)
+                moveTo(9f, 12f); lineTo(20f, 12f)
+                moveTo(9f, 17f); lineTo(20f, 17f)
+                moveTo(4f, 7f); lineTo(5.5f, 7f)
+                moveTo(4f, 12f); lineTo(5.5f, 12f)
+                moveTo(4f, 17f); lineTo(5.5f, 17f)
+            }
+        }
+    }
+
+    /** Collapse the player. */
+    val ChevronDown: ImageVector by lazy {
+        icon("ChevronDown") {
+            line {
+                moveTo(5f, 9f); lineTo(12f, 16f); lineTo(19f, 9f)
+            }
+        }
+    }
+
+    /** Favourite, outline. */
+    val Heart: ImageVector by lazy {
+        icon("Heart") {
+            line {
+                moveTo(12f, 20f); lineTo(4.5f, 12.5f)
+                lineTo(4.5f, 8.5f); lineTo(7.5f, 5.5f); lineTo(10f, 5.5f); lineTo(12f, 7.5f)
+                lineTo(14f, 5.5f); lineTo(16.5f, 5.5f); lineTo(19.5f, 8.5f)
+                lineTo(19.5f, 12.5f); close()
+            }
+        }
+    }
+
+    /** Favourite, filled. */
+    val HeartFilled: ImageVector by lazy {
+        icon("HeartFilled") {
+            solid {
+                moveTo(12f, 20f); lineTo(4.5f, 12.5f)
+                lineTo(4.5f, 8.5f); lineTo(7.5f, 5.5f); lineTo(10f, 5.5f); lineTo(12f, 7.5f)
+                lineTo(14f, 5.5f); lineTo(16.5f, 5.5f); lineTo(19.5f, 8.5f)
+                lineTo(19.5f, 12.5f); close()
+            }
+        }
+    }
 }

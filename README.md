@@ -138,3 +138,12 @@ All motion numbers live in `core/animation/SonaraMotion.kt` (`MotionTokens`). Co
 - **BROWSE SONGS / ADD SONGS**: opens a multi-select song picker (route `playlist/{id}/add`) with artwork, title, artist and album, a live "N SELECTED" count, SELECT ALL, DESELECT ALL and ADD TO PLAYLIST. Songs already in the playlist are shown as IN PLAYLIST and cannot be selected, so nothing is duplicated.
 - **EDIT mode**: EDIT in the playlist's top bar. Rows get checkboxes; the bottom area offers SELECT ALL, CLEAR SELECTION, REMOVE SELECTED (with confirmation) and ADD SONGS. Dragging, MOVE UP / DOWN and the per-song menu still work. DONE or Back leaves without changing anything. Removing only deletes playlist entries, never audio files.
 - No schema change.
+
+## M5 - Player experience
+
+- **Mini-player**: artwork, title, artist, play/pause (shows "pause" as soon as play was pressed, accent while buffering) and next. Tapping the artwork/text area opens the Full Player.
+- **Full Player**: one surface that grows from the mini-player's real bounds to the full screen (420 ms open, 340 ms close, driven by a single progress value). Artwork, title, artist, play and next travel to their full-player places; collapse, queue, favourite, album, previous, shuffle, repeat, seek bar and times are revealed in sequence. Back or the chevron collapses it; it is saved across rotation. Seek bar: tap or drag, the seek is sent when the finger lifts. Shuffle and repeat (off / all / one) drive the real player. Favourite uses the existing `favourites` table.
+- **Queue**: a panel over the player listing the real queue; tap to play an entry, cross to remove it.
+- **Overflow menu**: its animation now starts only once the popup window is on screen.
+- **Playlist EDIT mode**: EDIT/DONE and the title slide into each other, the checkbox column opens in the layout, the bottom bar expands vertically; scroll position is untouched.
+- No schema change; no second player instance.

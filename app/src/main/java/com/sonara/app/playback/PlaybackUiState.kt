@@ -35,9 +35,22 @@ data class PlaybackUiState(
     val shuffleEnabled: Boolean = false,
     val repeat: RepeatSetting = RepeatSetting.Off,
     val queueSize: Int = 0,
+    /** Position of the current track in the queue (0-based); -1 when there is none. */
+    val queueIndex: Int = -1,
+    /** The player is meant to be playing (play pressed) even if it is buffering right now. */
+    val playWhenReady: Boolean = false,
     val hasPrevious: Boolean = false,
     val hasNext: Boolean = false,
     val lastError: String? = null,
 ) {
     val hasMedia: Boolean get() = currentTrackId != null
+
+    /** Play was pressed and the player is still loading data: the button should already offer "pause". */
+    val isWaitingToPlay: Boolean get() = playWhenReady && isBuffering
+
+    /** Whether the play/pause button shows "pause". Same rule the controller uses to decide what a tap does. */
+    val showsPause: Boolean get() = isPlaying || isWaitingToPlay
 }
+
+/** One row of the queue as the UI shows it. */
+data class QueueEntry(val trackId: Long?, val title: String, val artist: String)

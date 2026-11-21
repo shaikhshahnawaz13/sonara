@@ -194,4 +194,47 @@ class SonaraMotionTest {
             }
         }
     }
+
+    @Test
+    fun playerExpandsSlowerThanItCollapsesAndBothUseTheirCurves() {
+        val open = full.playerExpandSpec() as TweenSpec<*>
+        val close = full.playerCollapseSpec() as TweenSpec<*>
+        assertEquals(MotionTokens.PLAYER_EXPAND_MS, open.durationMillis)
+        assertEquals(MotionTokens.PLAYER_COLLAPSE_MS, close.durationMillis)
+        assertTrue(close.durationMillis < open.durationMillis)
+        assertTrue(open.easing === MotionTokens.PlayerExpandEasing)
+        assertTrue(close.easing === MotionTokens.PlayerCollapseEasing)
+    }
+
+    @Test
+    fun playerMotionIsShorterWhenReducedAndSnapsWhenOff() {
+        assertEquals(252, (reduced.playerExpandSpec() as TweenSpec<*>).durationMillis)
+        assertEquals(204, (reduced.playerCollapseSpec() as TweenSpec<*>).durationMillis)
+        assertTrue(off.playerExpandSpec() is SnapSpec<*>)
+        assertTrue(off.playerCollapseSpec() is SnapSpec<*>)
+    }
+
+    @Test
+    fun playerEasingsStartAtZeroEndAtOneAndNeverOvershoot() {
+        listOf(MotionTokens.PlayerExpandEasing, MotionTokens.PlayerCollapseEasing).forEach { easing ->
+            assertEquals(0f, easing.transform(0f), 1e-4f)
+            assertEquals(1f, easing.transform(1f), 1e-4f)
+            var previous = 0f
+            for (i in 1..100) {
+                val v = easing.transform(i / 100f)
+                assertTrue(v >= previous - 1e-5f)
+                assertTrue(v <= 1f + 1e-5f)
+                previous = v
+            }
+        }
+    }
+
+    @Test
+    fun editAndQueueTransitionsUseTheirTokensAndSnapWhenOff() {
+        assertEquals(MotionTokens.EDIT_MS, (full.editSpec<Float>() as TweenSpec<*>).durationMillis)
+        assertEquals(MotionTokens.QUEUE_PANEL_MS, (full.queuePanelSpec<Float>() as TweenSpec<*>).durationMillis)
+        assertTrue(off.editSpec<Float>() is SnapSpec<*>)
+        assertTrue(off.queuePanelSpec<Float>() is SnapSpec<*>)
+        assertEquals(168, (reduced.editSpec<Float>() as TweenSpec<*>).durationMillis)
+    }
 }

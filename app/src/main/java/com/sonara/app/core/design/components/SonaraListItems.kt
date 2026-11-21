@@ -15,19 +15,23 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import com.sonara.app.core.common.formatDuration
 import com.sonara.app.core.design.SonaraBorders
 import com.sonara.app.core.design.SonaraSizes
 import com.sonara.app.core.design.SonaraSpacing
 import com.sonara.app.core.design.SonaraTheme
+import kotlin.math.roundToInt
 
 /** Section title with an optional text action on the right. */
 @Composable
@@ -88,6 +92,11 @@ fun SonaraTrackRow(
     /** In selection mode: the song is already there and cannot be picked (e.g. already in the playlist). */
     locked: Boolean = false,
     lockedLabel: String = "ADDED",
+    /**
+     * How far the checkbox column has opened, 0..1. Read while measuring, so animating it re-lays out the row
+     * without recomposing it. Rows have a stable width otherwise: the text only moves while this changes.
+     */
+    selectionReveal: () -> Float = ALWAYS_OPEN,
 ) {
     val colors = SonaraTheme.colors
     val typography = SonaraTheme.typography
@@ -111,11 +120,27 @@ fun SonaraTrackRow(
             .clickable(role = Role.Button, onClick = onClick)
             .padding(start = SonaraSpacing.s16, end = SonaraSpacing.s4, top = SonaraSpacing.s4, bottom = SonaraSpacing.s4),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(SonaraSpacing.s12),
     ) {
         if (selected != null) {
-            SonaraCheckbox(checked = selected || locked, enabled = !locked)
+            // The column is 22dp of checkbox plus the 12dp gap to the artwork, so the gap opens with it.
+            Box(
+                modifier = Modifier
+                    .layout { measurable, _ ->
+                        val box = CHECKBOX_SLOT_BOX.roundToPx()
+                        val placeable = measurable.measure(Constraints.fixed(box, box))
+                        val width = ((box + CHECKBOX_SLOT_GAP.roundToPx()) * selectionReveal().coerceIn(0f, 1f)).roundToInt()
+                        layout(width, placeable.height) { placeable.placeRelative(0, 0) }
+                    }
+                    .clipToBounds(),
+            ) {
+                SonaraCheckbox(checked = selected || locked, enabled = !locked)
+            }
         }
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(SonaraSpacing.s12),
+        ) {
         if (leadingNumber != null) {
             Box(modifier = Modifier.width(32.dp), contentAlignment = Alignment.Center) {
                 Text(
@@ -154,6 +179,7 @@ fun SonaraTrackRow(
             Box(modifier = Modifier.width(SonaraSpacing.s12))
         }
         trailing()
+        }
     }
 }
 
@@ -333,3 +359,7 @@ fun plural(count: Int, noun: String): String = if (count == 1) "1 $noun" else "$
 
 /** Width of the accent bar that marks a selected row. */
 private val SELECTED_BAR = 3.dp
+
+private val ALWAYS_OPEN: () -> Float = { 1f }
+private val CHECKBOX_SLOT_BOX = 22.dp
+private val CHECKBOX_SLOT_GAP = 12.dp

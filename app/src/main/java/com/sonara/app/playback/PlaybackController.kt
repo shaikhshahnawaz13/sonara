@@ -34,12 +34,20 @@ class PlaybackController(
     val state: StateFlow<PlaybackUiState> = _state
     val positionMs: StateFlow<Long> = _positionMs
 
+    private val _queue = MutableStateFlow<List<QueueEntry>>(emptyList())
+
+    /** The queue in playback-list order. Updated only when the list itself changes. */
+    val queue: StateFlow<List<QueueEntry>> = _queue
+
     private var pendingController: ListenableFuture<MediaController>? = null
     private var controller: MediaController? = null
     private var positionJob: Job? = null
 
     private val listener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
+            if (events.contains(Player.EVENT_TIMELINE_CHANGED) || events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)) {
+                refreshQueue(player)
+            }
             refresh(player)
         }
 
@@ -63,6 +71,7 @@ class PlaybackController(
                     val connected = future.get()
                     controller = connected
                     connected.addListener(listener)
+                    refreshQueue(connected)
                     refresh(connected)
                     startPositionUpdates()
                 } catch (e: Exception) {
@@ -85,6 +94,7 @@ class PlaybackController(
         }
         controller = null
         _state.value = PlaybackUiState()
+        _queue.value = emptyList()
         _positionMs.value = 0L
     }
 
@@ -138,6 +148,21 @@ class PlaybackController(
         if (c.isPlaying || c.playWhenReady && c.playbackState == Player.STATE_BUFFERING) c.pause() else c.play()
     }
 
+    /** Jumps to the [index]th queue entry and plays it. Out-of-range indices are ignored. */
+    fun skipToQueueItem(index: Int) {
+        val c = controller ?: return
+        if (index !in 0 until c.mediaItemCount) return
+        c.seekTo(index, 0L)
+        c.play()
+    }
+
+    /** Removes the [index]th queue entry. Removing the playing one moves playback on to the next. */
+    fun removeQueueItem(index: Int) {
+        val c = controller ?: return
+        if (index !in 0 until c.mediaItemCount) return
+        c.removeMediaItem(index)
+    }
+
     fun skipToNext() { controller?.seekToNextMediaItem() }
 
     /** Restarts the track if it has played for a few seconds, otherwise goes to the previous one. */
@@ -173,10 +198,24 @@ class PlaybackController(
             shuffleEnabled = player.shuffleModeEnabled,
             repeat = RepeatSetting.fromPlayerValue(player.repeatMode),
             queueSize = player.mediaItemCount,
+            queueIndex = if (item == null) -1 else player.currentMediaItemIndex,
+            playWhenReady = player.playWhenReady,
             hasPrevious = player.hasPreviousMediaItem(),
             hasNext = player.hasNextMediaItem(),
         )
         _positionMs.value = player.currentPosition.coerceAtLeast(0L)
+    }
+
+    private fun refreshQueue(player: Player) {
+        _queue.value = List(player.mediaItemCount) { i ->
+            val item = player.getMediaItemAt(i)
+            val meta = item.mediaMetadata
+            QueueEntry(
+                trackId = item.mediaId.toLongOrNull(),
+                title = meta.title?.toString() ?: "Unknown title",
+                artist = meta.artist?.toString() ?: "Unknown artist",
+            )
+        }
     }
 
     /** Polls the position while connected; cheap, and only the position flow changes. */

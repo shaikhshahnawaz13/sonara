@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
@@ -31,6 +32,8 @@ fun SonaraIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    /** Overrides the default tint, e.g. to show a toggle as on. */
+    tint: Color? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
@@ -61,7 +64,7 @@ fun SonaraIconButton(
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = if (enabled) colors.foreground else colors.foregroundMuted,
+            tint = tint ?: if (enabled) colors.foreground else colors.foregroundMuted,
             modifier = Modifier.size(SonaraSizes.iconStandard),
         )
     }

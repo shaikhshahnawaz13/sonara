@@ -19,7 +19,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
@@ -72,16 +74,25 @@ fun SonaraOverflowMenu(
     val token = remember { Any() }
     val isOpen = ActiveOverflowMenu.token === token
     var composed by remember { mutableStateOf(false) }
+    // True once the popup window exists and has been positioned (see the note on the opening animation).
+    var placed by remember { mutableStateOf(false) }
     val progress = remember { Animatable(0f) }
     val motion = SonaraTheme.motion
 
-    LaunchedEffect(isOpen) {
+    LaunchedEffect(isOpen, placed) {
         if (isOpen) {
             composed = true
-            progress.animateTo(1f, motion.menuOpenSpec())
+            if (placed) {
+                // Creating the popup window takes several frames. Animations are timed by the clock, not by
+                // frames, so starting before the window is up would skip the first part of the movement
+                // (the visible stutter). The animation starts only when the window is on screen, on a frame.
+                withFrameNanos { }
+                progress.animateTo(1f, motion.menuOpenSpec())
+            }
         } else if (composed) {
             progress.animateTo(0f, motion.menuCloseSpec())
             composed = false
+            placed = false
         }
     }
     DisposableEffect(token) {
@@ -99,6 +110,7 @@ fun SonaraOverflowMenu(
             OverflowMenuPopup(
                 actions = actions,
                 progress = progress,
+                onPlaced = { placed = true },
                 onClose = { if (ActiveOverflowMenu.token === token) ActiveOverflowMenu.token = null },
             )
         }
@@ -109,8 +121,10 @@ fun SonaraOverflowMenu(
 private fun OverflowMenuPopup(
     actions: List<SonaraMenuAction>,
     progress: Animatable<Float, *>,
+    onPlaced: () -> Unit,
     onClose: () -> Unit,
 ) {
+    val placedCallback by rememberUpdatedState(onPlaced)
     val colors = SonaraTheme.colors
     val typography = SonaraTheme.typography
     val density = LocalDensity.current
@@ -118,7 +132,7 @@ private fun OverflowMenuPopup(
     val insetBottom = WindowInsets.systemBars.getBottom(density)
     val marginPx = with(density) { SonaraSpacing.s8.roundToPx() }
     val provider = remember(insetTop, insetBottom, marginPx) {
-        AnchoredMenuPositionProvider(marginPx, insetTop, insetBottom)
+        AnchoredMenuPositionProvider(marginPx, insetTop, insetBottom) { placedCallback() }
     }
     val shiftPx = with(density) { ITEM_SHIFT.toPx() }
     val borderPx = with(density) { SonaraBorders.standard.toPx() }
@@ -193,7 +207,10 @@ private class AnchoredMenuPositionProvider(
     private val margin: Int,
     private val insetTop: Int,
     private val insetBottom: Int,
+    private val onFirstPlacement: () -> Unit,
 ) : PopupPositionProvider {
+    private var announced = false
+
     var anchorInMenu: Rect? = null
         private set
     var opensUpward: Boolean = false
@@ -221,6 +238,10 @@ private class AnchoredMenuPositionProvider(
             bottom = (anchorBounds.bottom - placement.y).toFloat(),
         )
         opensUpward = placement.opensUpward
+        if (!announced) {
+            announced = true
+            onFirstPlacement()
+        }
         return IntOffset(placement.x, placement.y)
     }
 }

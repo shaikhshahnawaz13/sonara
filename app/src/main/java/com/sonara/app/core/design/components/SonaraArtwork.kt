@@ -12,7 +12,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -42,6 +45,9 @@ val LocalArtworkLoader = compositionLocalOf<ArtworkLoader> {
 
 /** Never request more than this per side; large headers are still sharp enough and memory stays bounded. */
 private const val MAX_ARTWORK_PX = 512
+
+/** Size the Full Player asks for. One request size for every track, so it is decoded once and cached. */
+const val PLAYER_ARTWORK_PX = 768
 
 /** Artwork requested for tiles that fill their cell, whatever its exact width. */
 private val FILL_REQUEST_SIZE = 192.dp
@@ -107,6 +113,62 @@ private fun ArtworkTile(
                 modifier = Modifier.fillMaxSize(),
             )
         } else if (showLabel) {
+            Text("NO ART", style = SonaraTheme.typography.microLabel, color = colors.foregroundMuted)
+        }
+    }
+}
+
+/**
+ * Artwork for the Full Player. It never shows an empty tile while a better picture is on the way: when the
+ * large bitmap is not in memory yet, the small one the mini-player already shows stands in (same crop, so
+ * nothing moves) until the large one arrives. A track change keeps the previous picture on screen until the
+ * new one is ready, instead of flashing the empty tile.
+ */
+@Composable
+fun SonaraPlayerArtwork(
+    trackId: Long?,
+    modifier: Modifier = Modifier,
+) {
+    val loader = LocalArtworkLoader.current
+    val miniPx = with(LocalDensity.current) { 40.dp.roundToPx() }.coerceIn(1, MAX_ARTWORK_PX)
+    val ready: ImageBitmap? = if (trackId != null) {
+        remember(loader, trackId) {
+            (loader.peek(trackId, PLAYER_ARTWORK_PX) ?: loader.peek(trackId, miniPx))?.asImageBitmap()
+        }
+    } else {
+        null
+    }
+    // The last picture shown, so a track change replaces it only when the next one is available.
+    var shown by remember { mutableStateOf<ImageBitmap?>(null) }
+    var settledFor by remember { mutableStateOf<Long?>(null) }
+    LaunchedEffect(loader, trackId) {
+        if (trackId == null) {
+            shown = null
+            settledFor = null
+            return@LaunchedEffect
+        }
+        if (ready != null) shown = ready
+        val large = loader.peek(trackId, PLAYER_ARTWORK_PX)?.asImageBitmap()
+            ?: loader.load(trackId, PLAYER_ARTWORK_PX)?.asImageBitmap()
+        if (large != null) shown = large else if (ready == null) shown = null
+        settledFor = trackId
+    }
+    val colors = SonaraTheme.colors
+    val art = shown ?: ready
+    Box(
+        modifier = modifier
+            .background(colors.surfaceRaised)
+            .border(SonaraBorders.standard, colors.borderMuted, SonaraTheme.shapes.small),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (art != null) {
+            Image(
+                bitmap = art,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else if (trackId == null || settledFor == trackId) {
             Text("NO ART", style = SonaraTheme.typography.microLabel, color = colors.foregroundMuted)
         }
     }
