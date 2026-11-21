@@ -88,11 +88,9 @@ class PrefetchSlot<T>(
         val held = value
         val heldKey = this.key
         val fresh = clock() - storedAt <= maxAgeMs
-        val match = heldKey == key
-        if (match || !fresh) {
-            this.key = null
-            value = null
-        }
-        return if (match && fresh) held else null
+        // Any look empties the slot: the value is for one open, and a look for another key means it was not used.
+        this.key = null
+        value = null
+        return if (heldKey == key && fresh) held else null
     }
 }
