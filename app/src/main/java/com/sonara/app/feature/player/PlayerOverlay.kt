@@ -120,7 +120,7 @@ private fun PlayerSurface(
     // The heart shows the Favourites playlist and nothing else. Until the database has answered it is neither
     // filled nor tappable, rather than guessing.
     val playlists = container.playlistRepository
-    val favouriteIds: Set<Long>? by playlists.favouriteTrackIds.collectAsStateWithLifecycle<Set<Long>?, Set<Long>?>(initialValue = null)
+    val favouriteIds: Set<Long>? by playlists.favouriteTrackIds.collectAsStateWithLifecycle(initialValue = null as Set<Long>?)
     val snackbar = LocalSnackbar.current
     val queue by controller.queue.collectAsStateWithLifecycle()
     val position = controller.positionMs.collectAsStateWithLifecycle()
