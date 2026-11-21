@@ -14,6 +14,7 @@ import com.sonara.app.data.repository.LibraryRepository
 import com.sonara.app.data.repository.NameResult
 import com.sonara.app.data.repository.PlaylistRepository
 import com.sonara.app.feature.common.BrowseViewModel
+import com.sonara.app.feature.common.UiState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
@@ -39,8 +40,7 @@ class PlaylistsViewModel(private val repository: PlaylistRepository) : BrowseVie
 
     fun delete(playlistId: Long, onDone: () -> Unit) {
         viewModelScope.launch {
-            repository.delete(playlistId)
-            onDone()
+            if (repository.delete(playlistId)) onDone()
         }
     }
 
@@ -49,13 +49,20 @@ class PlaylistsViewModel(private val repository: PlaylistRepository) : BrowseVie
 
 data class PlaylistDetail(val summary: PlaylistSummary?, val entries: List<PlaylistEntry>)
 
+/** The one definition of a playlist screen's data, shared by the screen and by [PlaylistPrefetch]. */
+internal fun playlistDetailFlow(repository: PlaylistRepository, playlistId: Long) =
+    combine(repository.playlist(playlistId), repository.entries(playlistId)) { summary, entries ->
+        PlaylistDetail(summary, entries)
+    }
+
 class PlaylistDetailViewModel(
     private val repository: PlaylistRepository,
     private val playlistId: Long,
+    /** Data fetched before the screen opened, so the first frame already has content; null opens as "loading". */
+    prefetched: PlaylistDetail? = null,
 ) : BrowseViewModel() {
-    val state = combine(repository.playlist(playlistId), repository.entries(playlistId)) { summary, entries ->
-        PlaylistDetail(summary, entries)
-    }.asUiState()
+    val state = playlistDetailFlow(repository, playlistId)
+        .asUiState(initial = prefetched?.let { UiState.Content(it) } ?: UiState.Loading)
 
     fun removeEntry(entryId: Long) {
         viewModelScope.launch { repository.removeEntry(playlistId, entryId) }
@@ -71,8 +78,7 @@ class PlaylistDetailViewModel(
 
     fun delete(onDone: () -> Unit) {
         viewModelScope.launch {
-            repository.delete(playlistId)
-            onDone()
+            if (repository.delete(playlistId)) onDone()
         }
     }
 

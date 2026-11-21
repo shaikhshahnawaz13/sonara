@@ -16,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -72,7 +73,8 @@ fun SonaraOverflowMenu(
 ) {
     if (actions.isEmpty()) return
     val token = remember { Any() }
-    val isOpen = ActiveOverflowMenu.token === token
+    // Derived, so opening one menu recomposes that menu and the one it replaces, not every menu on screen.
+    val isOpen by remember { derivedStateOf { ActiveOverflowMenu.token === token } }
     var composed by remember { mutableStateOf(false) }
     // True once the popup window exists and has been positioned (see the note on the opening animation).
     var placed by remember { mutableStateOf(false) }

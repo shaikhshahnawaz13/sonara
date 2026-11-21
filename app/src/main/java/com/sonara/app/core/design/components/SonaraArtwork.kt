@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.sonara.app.core.design.SonaraBorders
@@ -52,6 +53,9 @@ const val PLAYER_ARTWORK_PX = 768
 /** Artwork requested for tiles that fill their cell, whatever its exact width. */
 private val FILL_REQUEST_SIZE = 192.dp
 
+/** The bitmap size [SonaraArtwork] requests for a tile of [size]; callers that warm the cache must use the same. */
+fun artworkRequestPx(size: Dp, density: Density): Int = with(density) { size.roundToPx() }.coerceIn(1, MAX_ARTWORK_PX)
+
 /**
  * Square artwork of a track (embedded art or album art). Without artwork it shows an honest empty tile,
  * never a stock image. The bitmap is requested at the size it is drawn at.
@@ -62,7 +66,7 @@ fun SonaraArtwork(
     size: Dp,
     modifier: Modifier = Modifier,
 ) {
-    val sizePx = with(LocalDensity.current) { size.roundToPx() }.coerceIn(1, MAX_ARTWORK_PX)
+    val sizePx = artworkRequestPx(size, LocalDensity.current)
     ArtworkTile(trackId, sizePx, modifier.size(size), showLabel = size >= 96.dp)
 }
 

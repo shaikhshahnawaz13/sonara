@@ -17,7 +17,6 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.ui.unit.IntSize
 import com.sonara.app.core.animation.SonaraMotion
 import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -36,6 +35,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -90,7 +90,7 @@ private enum class DetailDialog { Rename, Delete, RemoveUnavailable }
 /** One playlist: play it, shuffle it, queue it, rename or delete it, and reorder or remove its songs. */
 @Composable
 fun PlaylistDetailScreen(playlistId: Long) {
-    val viewModel = appViewModel { PlaylistDetailViewModel(it.playlistRepository, playlistId) }
+    val viewModel = appViewModel { PlaylistDetailViewModel(it.playlistRepository, playlistId, it.playlistPrefetch.take(playlistId)) }
     val state by viewModel.state.collectAsStateWithLifecycle()
     val navigator = LocalSonaraNavigator.current
     val snackbar = LocalSnackbar.current
@@ -99,14 +99,14 @@ fun PlaylistDetailScreen(playlistId: Long) {
     var editing by remember { mutableStateOf(false) }
     val summary = (state as? UiState.Content)?.data?.summary
 
-    val topMenu = remember(summary?.name, summary?.unavailableCount) {
+    val topMenu = remember(summary?.name, summary?.unavailableCount, summary?.isSystem) {
         buildList {
             if (summary != null) {
-                add(SonaraMenuAction("RENAME") { error = null; dialog = DetailDialog.Rename })
+                if (!summary.isSystem) add(SonaraMenuAction("RENAME") { error = null; dialog = DetailDialog.Rename })
                 if (summary.unavailableCount > 0) {
                     add(SonaraMenuAction("REMOVE UNAVAILABLE") { dialog = DetailDialog.RemoveUnavailable })
                 }
-                add(SonaraMenuAction("DELETE") { dialog = DetailDialog.Delete })
+                if (!summary.isSystem) add(SonaraMenuAction("DELETE") { dialog = DetailDialog.Delete })
             }
         }
     }
@@ -243,22 +243,25 @@ private fun PlaylistBody(
     // Checkboxes: the column opens and closes with this value (read while drawing, not composing).
     val reveal = remember { Animatable(if (editing) 1f else 0f) }
     val revealValue = remember { { reveal.value } }
-    var checksVisible by remember { mutableStateOf(editing) }
+    // The checkbox column exists from the very composition that enters edit mode (no extra recomposition of
+    // every row a frame into the animation) and until the closing animation has finished. The derived value
+    // changes only twice per trip, so the per-frame reveal value never recomposes anything.
+    val revealOpen by remember { derivedStateOf { reveal.value > 0f } }
+    val checksVisible = editing || revealOpen
     // True while the EDIT transition runs. The header's height changes every frame then, which would otherwise
     // retarget a placement animation on every visible row each frame; rows follow the header directly instead.
-    var editTransitioning by remember { mutableStateOf(false) }
+    // A plain holder, not state: the placement spec reads it when an animation starts, so flipping it costs no
+    // recomposition of the list.
+    val phase = remember { EditPhase() }
+    val placementSpec = remember(motion) {
+        if (motion.isOff) snap<IntOffset>() else GatedPlacementSpec(PLACEMENT_MS) { phase.transitioning }
+    }
     LaunchedEffect(editing) {
-        editTransitioning = true
+        phase.transitioning = true
         try {
-            if (editing) {
-                checksVisible = true
-                reveal.animateTo(1f, motion2.editSpec())
-            } else {
-                reveal.animateTo(0f, motion2.editSpec())
-                checksVisible = false
-            }
+            reveal.animateTo(if (editing) 1f else 0f, motion2.editSpec())
         } finally {
-            editTransitioning = false
+            phase.transitioning = false
         }
     }
     var selection by remember { mutableStateOf(Selection.NONE) }
@@ -300,7 +303,7 @@ private fun PlaylistBody(
                 verticalArrangement = Arrangement.spacedBy(SonaraSpacing.s12),
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(SonaraSpacing.s16)) {
-                    SonaraArtwork(trackId = summary.artworkTrackId, size = 112.dp)
+                    SonaraArtwork(trackId = summary.artworkTrackId, size = PLAYLIST_HEADER_ARTWORK)
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(SonaraSpacing.s4)) {
                         Text(summary.name, style = typography.screenTitle, color = colors.foreground, maxLines = 3, overflow = TextOverflow.Ellipsis)
                         Text(playlistMeta(summary), style = typography.microLabel, color = colors.accent)
@@ -345,7 +348,7 @@ private fun PlaylistBody(
             } else {
                 Modifier.animateItem(
                     fadeInSpec = null,
-                    placementSpec = if (motion.isOff || editTransitioning) snap<IntOffset>() else tween<IntOffset>(PLACEMENT_MS),
+                    placementSpec = placementSpec,
                     fadeOutSpec = null,
                 )
             }

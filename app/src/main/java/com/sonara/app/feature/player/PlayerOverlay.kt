@@ -7,6 +7,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.graphicsLayer
+import com.sonara.app.core.animation.MotionTokens
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
@@ -204,9 +209,9 @@ private fun PlayerSurface(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    SonaraIconButton(
-                        icon = if (isFavourite) SonaraIcons.HeartFilled else SonaraIcons.Heart,
-                        contentDescription = if (isFavourite) "Remove from favourites" else "Add to favourites",
+                    FavouriteHeart(
+                        trackId = trackId,
+                        isFavourite = isFavourite,
                         onClick = {
                             if (interactive && trackId != null && favouriteIds != null) {
                                 container.appScope.launch {
@@ -221,7 +226,6 @@ private fun PlayerSurface(
                                 }
                             }
                         },
-                        tint = if (isFavourite) colors.accent else null,
                         modifier = Modifier.layoutId(PlayerSlot.Favourite),
                     )
                     SonaraIconButton(
@@ -403,3 +407,70 @@ private class SlotsCache {
 }
 
 private const val INTERACTIVE_AT = 0.98f
+
+/**
+ * The heart. The icon and its size never change, so nothing around it moves. The colour eases between muted and
+ * accent, and a small, quiet pulse (a few percent, no overshoot) confirms a change of this track's membership.
+ * Both are driven by the database-backed [isFavourite], so a tap that failed shows nothing. Colour and pulse
+ * are read only while drawing or in this small scope, so the player's own animation is not touched, and a
+ * track change or a change made elsewhere updates the colour without the pulse.
+ */
+@Composable
+private fun FavouriteHeart(
+    trackId: Long?,
+    isFavourite: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = SonaraTheme.colors
+    val motion = SonaraTheme.motion
+    val tint by animateColorAsState(
+        targetValue = if (isFavourite) colors.accent else colors.foreground,
+        animationSpec = motion.selectionColorSpec(),
+        label = "favouriteTint",
+    )
+    val pulse = remember { Animatable(1f) }
+    val last = remember { HeartMemory() }
+    LaunchedEffect(trackId, isFavourite) {
+        val pulses = heartShouldPulse(last.seen, last.trackId, last.isFavourite, trackId, isFavourite)
+        last.seen = true
+        last.trackId = trackId
+        last.isFavourite = isFavourite
+        if (pulses && !motion.isOff) {
+            pulse.animateTo(HEART_PULSE_SCALE, tween(motion.durationMs(HEART_PULSE_UP_MS), easing = MotionTokens.StandardEasing))
+            pulse.animateTo(1f, tween(motion.durationMs(HEART_PULSE_DOWN_MS), easing = MotionTokens.StandardEasing))
+        }
+    }
+    SonaraIconButton(
+        icon = if (isFavourite) SonaraIcons.HeartFilled else SonaraIcons.Heart,
+        contentDescription = if (isFavourite) "Remove from favourites" else "Add to favourites",
+        onClick = onClick,
+        tint = tint,
+        modifier = modifier.graphicsLayer {
+            scaleX = pulse.value
+            scaleY = pulse.value
+        },
+    )
+}
+
+/**
+ * Whether the heart pulses: only when the same track's membership changed since the last look. The first look,
+ * a change of track and a change made elsewhere that arrives with a track change all update the colour quietly.
+ */
+internal fun heartShouldPulse(
+    seen: Boolean,
+    previousTrackId: Long?,
+    previousFavourite: Boolean,
+    trackId: Long?,
+    isFavourite: Boolean,
+): Boolean = seen && previousTrackId == trackId && previousFavourite != isFavourite
+
+private class HeartMemory {
+    var seen = false
+    var trackId: Long? = null
+    var isFavourite = false
+}
+
+private const val HEART_PULSE_SCALE = 1.08f
+private const val HEART_PULSE_UP_MS = 90
+private const val HEART_PULSE_DOWN_MS = 150

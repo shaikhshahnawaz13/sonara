@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.sqlite.db.SupportSQLiteDatabase
+import com.sonara.app.data.model.PlaylistRules
 import com.sonara.app.data.local.dao.FavouriteDao
 import com.sonara.app.data.local.dao.HistoryDao
 import com.sonara.app.data.local.dao.PlaybackDao
@@ -43,6 +45,17 @@ abstract class SonaraDatabase : RoomDatabase() {
         fun create(context: Context): SonaraDatabase =
             Room.databaseBuilder(context.applicationContext, SonaraDatabase::class.java, NAME)
                 .addMigrations(MIGRATION_1_2)
+                .addCallback(object : RoomDatabase.Callback() {
+                    // A brand-new database starts with the Favourite playlist already in it. Older databases get it
+                    // from PlaylistRepository.ensureFavourites() when the app starts; both are idempotent.
+                    override fun onCreate(db: SupportSQLiteDatabase) {
+                        val now = System.currentTimeMillis()
+                        db.execSQL(
+                            "INSERT OR IGNORE INTO playlists (id, name, description, createdAt, updatedAt) " +
+                                "VALUES (${PlaylistRules.FAVOURITES_ID}, '${PlaylistRules.FAVOURITES_DEFAULT_NAME}', NULL, $now, $now)",
+                        )
+                    }
+                })
                 .build()
     }
 }

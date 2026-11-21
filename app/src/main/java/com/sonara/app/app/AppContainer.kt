@@ -14,6 +14,7 @@ import com.sonara.app.data.media.MediaStoreScanner
 import com.sonara.app.data.repository.FolderRepository
 import com.sonara.app.data.repository.LibraryRepository
 import com.sonara.app.data.repository.PlaylistRepository
+import com.sonara.app.feature.playlists.PlaylistPrefetch
 import com.sonara.app.playback.PlaybackController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -59,6 +60,9 @@ class AppContainer(context: Context) {
 
     val playlistRepository: PlaylistRepository by lazy { PlaylistRepository(database) }
 
+    /** Fetches a playlist's data and first-screen artwork between a tap and the screen sliding in. */
+    val playlistPrefetch: PlaylistPrefetch by lazy { PlaylistPrefetch(playlistRepository, artworkProvider, appScope) }
+
     val playbackController: PlaybackController by lazy { PlaybackController(appContext, appScope) }
 
     /**
@@ -68,6 +72,9 @@ class AppContainer(context: Context) {
     @OptIn(FlowPreview::class)
     fun start() {
         audioAccess.refresh(shouldShowRationale = null)
+        // The Favourite playlist must exist before anyone looks for it, including in a database from before it
+        // was system-managed. Off the main thread; a failure is retried by the heart itself on its first tap.
+        appScope.launch(Dispatchers.IO) { runCatching { playlistRepository.ensureFavourites() } }
         appScope.launch {
             audioAccess.state
                 .map { it == AudioAccessState.Granted }

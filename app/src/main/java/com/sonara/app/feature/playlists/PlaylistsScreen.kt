@@ -11,8 +11,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.platform.LocalDensity
+import com.sonara.app.app.LocalAppContainer
 import com.sonara.app.core.design.components.LocalSnackbar
+import com.sonara.app.core.design.components.artworkRequestPx
 import com.sonara.app.core.design.components.SonaraConfirmDialog
 import com.sonara.app.core.design.components.SonaraEmptyState
 import com.sonara.app.core.design.components.SonaraErrorState
@@ -34,6 +38,10 @@ import com.sonara.app.feature.common.rememberPlaybackActions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
+/** Sizes of the artwork on a playlist screen (header, and a song row); the prefetch warms exactly these. */
+internal val PLAYLIST_HEADER_ARTWORK = 112.dp
+internal val PLAYLIST_ROW_ARTWORK = 48.dp
+
 private sealed interface PlaylistsDialog {
     data object Create : PlaylistsDialog
     data class Rename(val playlist: PlaylistSummary) : PlaylistsDialog
@@ -51,6 +59,31 @@ fun PlaylistsScreen() {
     val scope = rememberCoroutineScope()
     var dialog by remember { mutableStateOf<PlaylistsDialog?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
+
+    // Opening a playlist first has its data and first-screen artwork put in memory (a few tens of milliseconds,
+    // bounded), so the slide-in starts with the screen's content already there. See PlaylistPrefetch.
+    val container = LocalAppContainer.current
+    val density = LocalDensity.current
+    val opening = remember { BooleanArray(1) }
+    val openPlaylist: (Long) -> Unit = remember(container, navigator, density, scope) {
+        { id ->
+            if (!opening[0]) {
+                opening[0] = true
+                scope.launch {
+                    try {
+                        container.playlistPrefetch.warm(
+                            playlistId = id,
+                            headerPx = artworkRequestPx(PLAYLIST_HEADER_ARTWORK, density),
+                            rowPx = artworkRequestPx(PLAYLIST_ROW_ARTWORK, density),
+                        )
+                    } finally {
+                        opening[0] = false
+                    }
+                    navigator.openPlaylist(id)
+                }
+            }
+        }
+    }
 
     fun openDialog(next: PlaylistsDialog) {
         error = null
@@ -98,7 +131,7 @@ fun PlaylistsScreen() {
                                 name = playlist.name,
                                 subtitle = playlistMeta(playlist),
                                 artworkTrackId = playlist.artworkTrackId,
-                                onClick = { navigator.openPlaylist(playlist.id) },
+                                onClick = { openPlaylist(playlist.id) },
                                 menu = menu,
                             )
                         }
@@ -178,11 +211,14 @@ private fun playlistMenu(
             if (ids.isEmpty()) onEmpty() else block(ids)
         }
     }
-    return listOf(
-        SonaraMenuAction("PLAY") { withIds { actions.play(it, 0) } },
-        SonaraMenuAction("SHUFFLE") { withIds { actions.shuffle(it) } },
-        SonaraMenuAction("ADD TO QUEUE") { withIds { actions.addToQueue(it, playlist.name) } },
-        SonaraMenuAction("RENAME") { onRename() },
-        SonaraMenuAction("DELETE") { onDelete() },
-    )
+    return buildList {
+        add(SonaraMenuAction("PLAY") { withIds { actions.play(it, 0) } })
+        add(SonaraMenuAction("SHUFFLE") { withIds { actions.shuffle(it) } })
+        add(SonaraMenuAction("ADD TO QUEUE") { withIds { actions.addToQueue(it, playlist.name) } })
+        // The system Favourite playlist is managed by the app: no rename, no delete.
+        if (!playlist.isSystem) {
+            add(SonaraMenuAction("RENAME") { onRename() })
+            add(SonaraMenuAction("DELETE") { onDelete() })
+        }
+    }
 }

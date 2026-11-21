@@ -15,8 +15,8 @@ android {
         applicationId = "com.sonara.app"
         minSdk = 31
         targetSdk = 36
-        versionCode = 8
-        versionName = "1.0.0-m5.1"
+        versionCode = 9
+        versionName = "1.0.0-m5.2"
     }
 
     buildTypes {

@@ -81,16 +81,17 @@ interface PlaylistDao {
     @Query("SELECT name FROM playlists")
     suspend fun allNames(): List<String>
 
-    /** The Favourites playlist: the oldest one whose name is any of [names], ignoring case. */
-    @Query("SELECT id FROM playlists WHERE name COLLATE NOCASE IN (:names) ORDER BY id ASC LIMIT 1")
-    suspend fun findIdByNames(names: List<String>): Long?
+    /** Creates a row with an explicit id unless that id exists. Returns -1 when it already existed. */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertIfAbsent(playlist: PlaylistEntity): Long
 
-    /** Track ids in the Favourites playlist. Re-emits whenever that playlist or its entries change. */
-    @Query(
-        "SELECT e.trackId FROM playlist_tracks e WHERE e.playlistId = " +
-            "(SELECT id FROM playlists WHERE name COLLATE NOCASE IN (:names) ORDER BY id ASC LIMIT 1)",
-    )
-    fun observeTrackIdsOfNamed(names: List<String>): Flow<List<Long>>
+    /** Older playlists called [names] (ignoring case), other than [exceptId], oldest first. */
+    @Query("SELECT id FROM playlists WHERE name COLLATE NOCASE IN (:names) AND id != :exceptId ORDER BY id ASC")
+    suspend fun idsByNames(names: List<String>, exceptId: Long): List<Long>
+
+    /** Track ids of one playlist. Re-emits whenever its entries change. */
+    @Query("SELECT trackId FROM playlist_tracks WHERE playlistId = :playlistId")
+    fun observeTrackIdsOf(playlistId: Long): Flow<List<Long>>
 
     @Query("DELETE FROM playlist_tracks WHERE playlistId = :playlistId AND trackId = :trackId")
     suspend fun deleteByTrack(playlistId: Long, trackId: Long): Int

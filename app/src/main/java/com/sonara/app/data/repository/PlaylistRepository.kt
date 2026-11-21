@@ -41,35 +41,53 @@ class PlaylistRepository(private val database: SonaraDatabase) {
         dao.observeEntries(playlistId).map { rows -> rows.map { it.toEntry() } }
 
     /**
-     * The tracks in the Favourites playlist, straight from the database: the heart shows this and nothing else,
-     * so it can never disagree with the playlist.
+     * The tracks in the Favourite playlist, straight from the database: the heart shows this and nothing else,
+     * so it can never disagree with the playlist (whatever changed it: the heart, the playlist screen, a menu).
      */
-    val favouriteTrackIds: Flow<Set<Long>> = dao.observeTrackIdsOfNamed(PlaylistRules.FAVOURITES_NAMES)
+    val favouriteTrackIds: Flow<Set<Long>> = dao.observeTrackIdsOf(PlaylistRules.FAVOURITES_ID)
         .map { it.toHashSet() }
         .distinctUntilChanged()
 
     /**
-     * Adds the track to the Favourites playlist, or removes it if it is there, in one transaction that decides
-     * from what the database holds at that moment (so quick repeated taps alternate correctly). The playlist is
-     * created when it does not exist. Returns whether the track is a favourite afterwards. Throws on a
-     * database failure and then changes nothing.
+     * Makes sure the system Favourite playlist exists, safely and any number of times: a fresh database gets
+     * it, an older one gets it without any other playlist being touched, and a playlist an older version
+     * called "Favourites" is merged into it (entries kept, repeats dropped) instead of ending up twice.
+     * It is always the same row (see [PlaylistRules.FAVOURITES_ID]).
+     */
+    suspend fun ensureFavourites(now: Long = System.currentTimeMillis()) {
+        database.withTransaction { ensureFavouritesRow(now) }
+    }
+
+    private suspend fun ensureFavouritesRow(now: Long) {
+        val id = PlaylistRules.FAVOURITES_ID
+        dao.insertIfAbsent(
+            PlaylistEntity(id = id, name = PlaylistRules.FAVOURITES_DEFAULT_NAME, createdAt = now, updatedAt = now),
+        )
+        val legacyIds = dao.idsByNames(PlaylistRules.FAVOURITES_NAMES, exceptId = id)
+        if (legacyIds.isEmpty()) return
+        val legacyTracks = legacyIds.map { legacyId -> dao.entriesOf(legacyId).map { it.trackId } }
+        legacyIds.forEach { dao.deleteById(it) }
+        val merged = PlaylistRules.mergeLegacyFavourites(dao.entriesOf(id).map { it.trackId }, legacyTracks)
+        addTracks(id, merged, now)
+    }
+
+    /**
+     * Adds the track to the Favourite playlist, or removes it if it is there, in one transaction that decides
+     * from what the database holds at that moment (so quick repeated taps alternate correctly and can never
+     * add a track twice). Returns whether the track is a favourite afterwards. Throws on a database failure
+     * and then changes nothing.
      */
     suspend fun toggleFavourite(trackId: Long, now: Long = System.currentTimeMillis()): Boolean =
         database.withTransaction {
-            var playlistId = dao.findIdByNames(PlaylistRules.FAVOURITES_NAMES)
-            val held = playlistId?.let { id -> dao.entriesOf(id).map { it.trackId } }.orEmpty()
+            ensureFavouritesRow(now)
+            val id = PlaylistRules.FAVOURITES_ID
+            val held = dao.entriesOf(id).map { it.trackId }
             when (PlaylistRules.favouriteChange(held, trackId)) {
                 FavouriteChange.Add -> {
-                    if (playlistId == null) {
-                        playlistId = dao.insert(
-                            PlaylistEntity(name = PlaylistRules.FAVOURITES_DEFAULT_NAME, createdAt = now, updatedAt = now),
-                        )
-                    }
-                    addTracks(playlistId, listOf(trackId), now)
+                    addTracks(id, listOf(trackId), now)
                     true
                 }
                 FavouriteChange.Remove -> {
-                    val id = checkNotNull(playlistId)
                     if (dao.deleteByTrack(id, trackId) > 0) {
                         renumber(id)
                         dao.touch(id, now)
@@ -93,6 +111,9 @@ class PlaylistRepository(private val database: SonaraDatabase) {
 
     suspend fun rename(playlistId: Long, rawName: String, now: Long = System.currentTimeMillis()): NameResult =
         database.withTransaction {
+            if (!PlaylistRules.canRename(playlistId)) {
+                return@withTransaction NameResult.Rejected(PlaylistNameError.Protected)
+            }
             val current = dao.nameOf(playlistId)
                 ?: return@withTransaction NameResult.Rejected(PlaylistNameError.Empty)
             val error = PlaylistRules.validateName(rawName, dao.allNames(), current = current)
@@ -102,8 +123,15 @@ class PlaylistRepository(private val database: SonaraDatabase) {
             NameResult.Saved(playlistId, name)
         }
 
-    /** Deletes the playlist and its entries. Audio files are never touched. */
-    suspend fun delete(playlistId: Long) = dao.deleteById(playlistId)
+    /**
+     * Deletes the playlist and its entries. Audio files are never touched. The system Favourite playlist is
+     * refused (returns false and changes nothing); this is the one place deletion goes through.
+     */
+    suspend fun delete(playlistId: Long): Boolean {
+        if (!PlaylistRules.canDelete(playlistId)) return false
+        dao.deleteById(playlistId)
+        return true
+    }
 
     /** Appends [trackIds] in the given order, skipping tracks the playlist already has. */
     suspend fun addTracks(playlistId: Long, trackIds: List<Long>, now: Long = System.currentTimeMillis()): AddResult =

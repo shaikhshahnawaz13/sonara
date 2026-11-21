@@ -15,7 +15,10 @@ data class PlaylistSummary(
     val durationMs: Long,
     /** A track whose artwork represents the playlist; null when the playlist has no available track. */
     val artworkTrackId: Long?,
-)
+) {
+    /** The system-managed Favourite playlist: it cannot be renamed or deleted. */
+    val isSystem: Boolean get() = PlaylistRules.isSystem(id)
+}
 
 /** One position in a playlist. [track] is null when the audio file is no longer in the library. */
 data class PlaylistEntry(
@@ -42,6 +45,7 @@ enum class PlaylistNameError(val message: String) {
     Empty("GIVE THE PLAYLIST A NAME"),
     TooLong("NAMES CAN BE UP TO ${PlaylistRules.MAX_NAME_LENGTH} CHARACTERS"),
     Duplicate("A PLAYLIST WITH THIS NAME ALREADY EXISTS"),
+    Protected("THE FAVOURITE PLAYLIST CANNOT BE RENAMED"),
 }
 
 /** Rules that do not need a database, so they can be tested directly. */
@@ -63,11 +67,34 @@ object PlaylistRules {
         return if (clash) PlaylistNameError.Duplicate else null
     }
 
-    /** Names the heart looks for, in this order of preference. Matched ignoring case. */
-    val FAVOURITES_NAMES: List<String> = listOf("Favourites", "Favourite", "Favorites", "Favorite")
+    /**
+     * The Favourite playlist's identity. It is a fixed id that Room's generated ids (which start at 1) never
+     * use, so the playlist is found by id, never by its name, and is never recreated under another identity.
+     */
+    const val FAVOURITES_ID = -1L
 
-    /** What a new Favourites playlist is called when none exists yet. */
-    const val FAVOURITES_DEFAULT_NAME = "Favourites"
+    /** The display name of the Favourite playlist. */
+    const val FAVOURITES_DEFAULT_NAME = "Favourite"
+
+    /**
+     * Names an older database may hold for what is now the Favourite playlist (M5.1 created "Favourites").
+     * Such a playlist is merged into the system playlist once, when the app starts. Matched ignoring case.
+     */
+    val FAVOURITES_NAMES: List<String> = listOf("Favourite", "Favourites", "Favorite", "Favorites")
+
+    fun isSystem(playlistId: Long): Boolean = playlistId == FAVOURITES_ID
+
+    /** The system Favourite playlist is app-managed: it can neither be renamed nor deleted. */
+    fun canRename(playlistId: Long): Boolean = !isSystem(playlistId)
+    fun canDelete(playlistId: Long): Boolean = !isSystem(playlistId)
+
+    /**
+     * The tracks to append to the system playlist when older playlists called "Favourites" are merged into it:
+     * the older playlists' tracks in order (oldest playlist first), without repeats and without anything
+     * the system playlist already holds.
+     */
+    fun mergeLegacyFavourites(existing: Collection<Long>, legacy: List<List<Long>>): List<Long> =
+        planAppend(existing, legacy.flatten())
 
     fun isFavouritesName(name: String): Boolean = FAVOURITES_NAMES.any { it.equals(normalizeName(name), ignoreCase = true) }
 

@@ -40,11 +40,13 @@ fun SonaraTheme(
     content: @Composable () -> Unit,
 ) {
     val motion = remember(motionLevel) { SonaraMotion(motionLevel) }
-    val colors = SonaraColors()
-    val typography = SonaraTypography()
-    val shapes = SonaraShapes()
+    // Tokens never change, so they are built once. Rebuilding them (and the Material mapping below) on every
+    // recomposition of the root would hand every screen new instances to compare for no reason.
+    val colors = remember { SonaraColors() }
+    val typography = remember { SonaraTypography() }
+    val shapes = remember { SonaraShapes() }
 
-    val materialColors = darkColorScheme(
+    val materialColors = remember(colors) { darkColorScheme(
         primary = colors.accent,
         onPrimary = colors.onAccent,
         secondary = colors.accent,
@@ -59,9 +61,9 @@ fun SonaraTheme(
         outlineVariant = colors.borderMuted,
         error = colors.danger,
         onError = colors.background,
-    )
+    ) }
 
-    val materialTypography = Typography(
+    val materialTypography = remember(typography) { Typography(
         displayLarge = typography.hero,
         headlineMedium = typography.screenTitle,
         titleLarge = typography.section,
@@ -69,15 +71,15 @@ fun SonaraTheme(
         bodyMedium = typography.body,
         labelMedium = typography.metadata,
         labelSmall = typography.microLabel,
-    )
+    ) }
 
-    val materialShapes = Shapes(
+    val materialShapes = remember(shapes) { Shapes(
         extraSmall = shapes.none,
         small = shapes.small,
         medium = shapes.medium,
         large = shapes.large,
         extraLarge = shapes.large,
-    )
+    ) }
 
     CompositionLocalProvider(
         LocalSonaraColors provides colors,

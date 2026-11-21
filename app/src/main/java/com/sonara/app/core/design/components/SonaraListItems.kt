@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -98,7 +99,6 @@ fun SonaraTrackRow(
     selectionReveal: () -> Float = ALWAYS_OPEN,
 ) {
     val colors = SonaraTheme.colors
-    val typography = SonaraTheme.typography
     val marked = selected == true && !locked
     Row(
         modifier = modifier
@@ -118,79 +118,114 @@ fun SonaraTrackRow(
             )
             .clickable(role = Role.Button, onClick = onClick)
             .padding(start = SonaraSpacing.s16, end = SonaraSpacing.s4, top = SonaraSpacing.s4, bottom = SonaraSpacing.s4),
+        horizontalArrangement = if (selected == null) Arrangement.spacedBy(SonaraSpacing.s12) else Arrangement.Start,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // In selection mode the left group always reserves the checkbox column (22dp box + 12dp gap) and slides
-        // left by the closed part of it; the checkbox is clipped to the opened part. Both only happen at draw time.
-        val slot = if (selected != null) CHECKBOX_SLOT_BOX + CHECKBOX_SLOT_GAP else 0.dp
-        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-        if (selected != null) {
-            Box(
-                modifier = Modifier.drawWithContent {
-                    val open = selectionReveal().coerceIn(0f, 1f)
-                    clipRect(right = slot.toPx() * open) { this@drawWithContent.drawContent() }
-                },
-            ) {
-                SonaraCheckbox(checked = selected || locked, enabled = !locked)
-            }
-        }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = slot)
-                .graphicsLayer {
-                    if (selected != null) translationX = -slot.toPx() * (1f - selectionReveal().coerceIn(0f, 1f))
-                },
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(SonaraSpacing.s12),
-        ) {
-        if (leadingNumber != null) {
-            Box(modifier = Modifier.width(32.dp), contentAlignment = Alignment.Center) {
-                Text(
-                    text = if (leadingNumber > 0) leadingNumber.toString() else "–",
-                    style = typography.metadata,
-                    color = if (isCurrent) colors.accent else colors.foregroundMuted,
-                )
-            }
+        if (selected == null) {
+            // A plain row is one flat Row: no extra nodes and no extra layers, since every list in the app uses it.
+            TrackLead(leadingNumber, artworkTrackId, title, subtitle, isCurrent, dimmed, locked)
+            TrackEnd(locked, lockedLabel, durationMs, menu, title, trailing)
         } else {
-            SonaraArtwork(trackId = artworkTrackId, size = 48.dp)
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = typography.trackTitle,
-                color = if (isCurrent) colors.accent else if (dimmed || locked) colors.foregroundMuted else colors.foreground,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = subtitle,
-                style = typography.metadata,
-                color = colors.foregroundMuted,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        }
-        }
-        Row(
-            modifier = Modifier.padding(start = SonaraSpacing.s12),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(SonaraSpacing.s12),
-        ) {
-            if (locked) {
-                Text(text = lockedLabel, style = typography.microLabel, color = colors.foregroundMuted)
-            } else if (durationMs != null) {
-                Text(text = formatDuration(durationMs), style = typography.metadata, color = colors.foregroundMuted)
+            // In selection mode the left group always reserves the checkbox column (22dp box + 12dp gap) and
+            // slides left by the closed part of it; the checkbox is clipped to the opened part. Both happen at
+            // draw time only, so the text is measured once for the whole transition.
+            val slot = CHECKBOX_SLOT_BOX + CHECKBOX_SLOT_GAP
+            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                Box(
+                    modifier = Modifier.drawWithContent {
+                        val open = selectionReveal().coerceIn(0f, 1f)
+                        clipRect(right = slot.toPx() * open) { this@drawWithContent.drawContent() }
+                    },
+                ) {
+                    SonaraCheckbox(checked = selected || locked, enabled = !locked)
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = slot)
+                        .graphicsLayer { translationX = -slot.toPx() * (1f - selectionReveal().coerceIn(0f, 1f)) },
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(SonaraSpacing.s12),
+                ) {
+                    TrackLead(leadingNumber, artworkTrackId, title, subtitle, isCurrent, dimmed, locked)
+                }
             }
-            if (menu.isNotEmpty()) {
-                SonaraOverflowMenu(actions = menu, contentDescription = "More actions for $title")
-            } else {
-                Box(modifier = Modifier.width(SonaraSpacing.s12))
+            Row(
+                modifier = Modifier.padding(start = SonaraSpacing.s12),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(SonaraSpacing.s12),
+            ) {
+                TrackEnd(locked, lockedLabel, durationMs, menu, title, trailing)
             }
-            trailing()
         }
     }
+}
+
+/** Artwork (or track number) and the two text lines of a song row. */
+@Composable
+private fun RowScope.TrackLead(
+    leadingNumber: Int?,
+    artworkTrackId: Long?,
+    title: String,
+    subtitle: String,
+    isCurrent: Boolean,
+    dimmed: Boolean,
+    locked: Boolean,
+) {
+    val colors = SonaraTheme.colors
+    val typography = SonaraTheme.typography
+    if (leadingNumber != null) {
+        Box(modifier = Modifier.width(32.dp), contentAlignment = Alignment.Center) {
+            Text(
+                text = if (leadingNumber > 0) leadingNumber.toString() else "–",
+                style = typography.metadata,
+                color = if (isCurrent) colors.accent else colors.foregroundMuted,
+            )
+        }
+    } else {
+        SonaraArtwork(trackId = artworkTrackId, size = 48.dp)
+    }
+    Column(modifier = Modifier.weight(1f)) {
+        Text(
+            text = title,
+            style = typography.trackTitle,
+            color = if (isCurrent) colors.accent else if (dimmed || locked) colors.foregroundMuted else colors.foreground,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = subtitle,
+            style = typography.metadata,
+            color = colors.foregroundMuted,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/** Duration (or the locked label), the overflow menu and any trailing control of a song row. */
+@Composable
+private fun TrackEnd(
+    locked: Boolean,
+    lockedLabel: String,
+    durationMs: Long?,
+    menu: List<SonaraMenuAction>,
+    title: String,
+    trailing: @Composable () -> Unit,
+) {
+    val colors = SonaraTheme.colors
+    val typography = SonaraTheme.typography
+    if (locked) {
+        Text(text = lockedLabel, style = typography.microLabel, color = colors.foregroundMuted)
+    } else if (durationMs != null) {
+        Text(text = formatDuration(durationMs), style = typography.metadata, color = colors.foregroundMuted)
+    }
+    if (menu.isNotEmpty()) {
+        SonaraOverflowMenu(actions = menu, contentDescription = "More actions for $title")
+    } else {
+        Box(modifier = Modifier.width(SonaraSpacing.s12))
+    }
+    trailing()
 }
 
 /** Album tile for grids and rows: square artwork as wide as the cell, then title, artist and track count. */

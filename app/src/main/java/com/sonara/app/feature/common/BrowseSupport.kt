@@ -47,7 +47,7 @@ abstract class BrowseViewModel : ViewModel() {
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    protected fun <T> Flow<T>.asUiState(): StateFlow<UiState<T>> {
+    protected fun <T> Flow<T>.asUiState(initial: UiState<T> = UiState.Loading): StateFlow<UiState<T>> {
         val source = this
         return retryTick
             .flatMapLatest {
@@ -55,7 +55,7 @@ abstract class BrowseViewModel : ViewModel() {
                     .map<T, UiState<T>> { UiState.Content(it) }
                     .catch { emit(UiState.Error(it.message ?: "Unexpected error")) }
             }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), UiState.Loading)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), initial)
     }
 
     private companion object {

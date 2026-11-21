@@ -157,3 +157,21 @@ All motion numbers live in `core/animation/SonaraMotion.kt` (`MotionTokens`). Co
 - **Playlist EDIT transition**: same animation; row placement is snapped while it runs and the checkbox column is
   revealed at draw time only, so rows are not re-measured per frame. Inferred from code, not profiled: verify on a device.
 - **Repeat One**: the "1" is centred on the loop and drawn with a bevelled join.
+
+## M5.2 - Permanent Favourite and performance pass
+
+- **Favourite playlist**: a system-managed playlist named "Favourite" with the fixed id `-1` (`PlaylistRules.FAVOURITES_ID`;
+  generated ids start at 1, so it can never collide). Created with a new database (Room callback) and, for older
+  databases, by `PlaylistRepository.ensureFavourites()` at start-up; it is idempotent. A playlist an earlier version
+  called "Favourites"/"Favorite(s)" is merged into it once (entries kept, repeats dropped). It appears in Playlists,
+  behaves like any playlist, and cannot be renamed or deleted (menus hide those actions; the repository refuses them).
+  No schema change.
+- **Heart**: toggles membership through one Room transaction; the icon follows the database only. Colour eases between
+  muted and accent; a small pulse (8 %) confirms a change of the current track's membership.
+- **Opening a playlist**: `PlaylistPrefetch` has the playlist data and first-screen artwork in memory (bounded to
+  roughly 230 ms worst case, usually a few tens) before the slide starts, so the screen's content is composed in the
+  frame that starts the transition instead of mid-slide.
+- **Edit mode**: no list-wide recomposition at the start (checkbox column derived from `editing`; placement gate is a
+  plain flag read when an animation starts); plain song rows are one flat Row again (no extra layer per row).
+- **Smaller**: theme tokens remembered; overflow-menu open state derived per menu.
+- Nothing here has been profiled. Judge on the `perf` APK, not the debug one.
