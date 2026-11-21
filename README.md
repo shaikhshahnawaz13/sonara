@@ -175,3 +175,15 @@ All motion numbers live in `core/animation/SonaraMotion.kt` (`MotionTokens`). Co
   plain flag read when an animation starts); plain song rows are one flat Row again (no extra layer per row).
 - **Smaller**: theme tokens remembered; overflow-menu open state derived per menu.
 - Nothing here has been profiled. Judge on the `perf` APK, not the debug one.
+
+## M6.1 - Equalizer
+
+- **Where**: Settings -> Audio -> Equalizer (`feature/equalizer`). Nothing in the players changed.
+- **How it connects**: `AudioEffectsManager` (process-wide, in `AppContainer`) is attached by `PlaybackService` to its
+  ExoPlayer and created on that player's own audio session; it follows `onAudioSessionIdChanged`. At most one
+  `android.media.audiofx.Equalizer` exists, none while the equalizer is off, and it is released before the player.
+  Failures end in a status line, never a crash or an interruption of playback.
+- **What it shows**: band count, centre frequencies, gain range and presets are read from the device (one probe on a
+  throwaway session); no device equalizer means an explanatory message and no controls.
+- **Persistence** (DataStore, no schema change): enabled flag, preset name, band levels; restored when playback attaches.
+- **Needs a phone**: whether it changes the sound, and how each output (speaker, wired, Bluetooth) behaves.

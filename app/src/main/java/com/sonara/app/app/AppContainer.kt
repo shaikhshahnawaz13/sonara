@@ -2,6 +2,7 @@ package com.sonara.app.app
 
 import android.content.Context
 import androidx.compose.runtime.staticCompositionLocalOf
+import com.sonara.app.audio.AudioEffectsManager
 import com.sonara.app.core.permissions.AudioAccessModel
 import com.sonara.app.core.permissions.AudioAccessState
 import com.sonara.app.core.permissions.AudioPermissionChecker
@@ -62,6 +63,9 @@ class AppContainer(context: Context) {
 
     /** Fetches a playlist's data and first-screen artwork between a tap and the screen sliding in. */
     val playlistPrefetch: PlaylistPrefetch by lazy { PlaylistPrefetch(playlistRepository, artworkProvider, appScope) }
+
+    /** The equalizer, connected to the playback service's player (see AudioEffectsManager). */
+    val audioEffects: AudioEffectsManager by lazy { AudioEffectsManager(appContext, settingsRepository, appScope) }
 
     val playbackController: PlaybackController by lazy { PlaybackController(appContext, appScope) }
 

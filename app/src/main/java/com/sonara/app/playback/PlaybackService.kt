@@ -61,6 +61,8 @@ class PlaybackService : MediaSessionService() {
             .build()
         exoPlayer.addListener(ErrorHandler())
         player = exoPlayer
+        // The equalizer attaches to this player's audio session (and follows it if the session changes).
+        container.audioEffects.attach(exoPlayer)
 
         val openApp = PendingIntent.getActivity(
             this,
@@ -102,6 +104,8 @@ class PlaybackService : MediaSessionService() {
         historyRecorder?.stop()
         mediaSession?.release()
         mediaSession = null
+        // Release the audio effect before its audio session goes away with the player.
+        container.audioEffects.detach()
         player?.release()
         player = null
         scope.cancel()

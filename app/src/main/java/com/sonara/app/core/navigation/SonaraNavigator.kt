@@ -35,6 +35,7 @@ class SonaraNavigator(
 
     fun openSearch() = push(SonaraDestination.Search.route)
     fun openSettings() = push(SonaraDestination.Settings.route)
+    fun openEqualizer() = push(SonaraDestination.Equalizer.route)
     fun openAlbum(albumId: Long) = push(SonaraRoutes.album(albumId))
     fun openPlaylist(playlistId: Long) = push(SonaraRoutes.playlist(playlistId))
     /** The multi-select song picker that adds to [playlistId]. */

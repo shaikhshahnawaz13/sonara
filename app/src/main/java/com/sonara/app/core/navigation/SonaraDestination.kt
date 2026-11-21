@@ -17,7 +17,8 @@ enum class SonaraDestination(
     Playlists(route = "playlists", label = "Playlists", isPrimary = true),
     Folders(route = "folders", label = "Folders", isPrimary = true),
     Search(route = "search", label = "Search", isPrimary = false),
-    Settings(route = "settings", label = "Settings", isPrimary = false);
+    Settings(route = "settings", label = "Settings", isPrimary = false),
+    Equalizer(route = "equalizer", label = "Equalizer", isPrimary = false);
 
     companion object {
         /** The single NavHost route that hosts the tab pager. */

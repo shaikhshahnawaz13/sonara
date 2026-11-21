@@ -40,6 +40,7 @@ import com.sonara.app.feature.detail.AlbumDetailScreen
 import com.sonara.app.feature.detail.ArtistDetailScreen
 import com.sonara.app.feature.detail.FolderDetailScreen
 import com.sonara.app.feature.detail.GenreDetailScreen
+import com.sonara.app.feature.equalizer.EqualizerScreen
 import com.sonara.app.feature.player.PlayerOverlay
 import com.sonara.app.feature.player.PlayerSheetState
 import com.sonara.app.feature.player.rememberPlayerSheetState
@@ -131,6 +132,9 @@ fun SonaraApp() {
             }
             composable(SonaraDestination.Settings.route) {
                 SonaraScreenSurface { SettingsScreen(onBack = { navController.popBackStack() }) }
+            }
+            composable(SonaraDestination.Equalizer.route) {
+                SonaraScreenSurface { EqualizerScreen(onBack = { navController.popBackStack() }) }
             }
             composable(
                 route = SonaraRoutes.ALBUM,

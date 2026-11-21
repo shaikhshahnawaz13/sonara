@@ -8,10 +8,13 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.sonara.app.audio.EqualizerLogic
+import com.sonara.app.audio.EqualizerSettings
 import com.sonara.app.data.model.RecentSearches
 import java.io.IOException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
 /** How much motion the UI uses. Honoured by the motion system in M7. */
@@ -32,6 +35,9 @@ data class SonaraSettings(
 )
 
 internal object SettingsKeys {
+    val equalizerEnabled = booleanPreferencesKey("equalizer_enabled")
+    val equalizerPreset = stringPreferencesKey("equalizer_preset")
+    val equalizerLevels = stringPreferencesKey("equalizer_band_levels")
     val animationIntensity = stringPreferencesKey("animation_intensity")
     val resumePlayback = booleanPreferencesKey("resume_playback")
     val audioPermissionRequested = booleanPreferencesKey("audio_permission_requested")
@@ -57,6 +63,13 @@ internal fun Preferences.toSettings(): SonaraSettings {
     )
 }
 
+/** The equalizer's saved choice. Kept apart from [SonaraSettings] so a slider moving never touches the app-wide settings. */
+internal fun Preferences.toEqualizerSettings(): EqualizerSettings = EqualizerSettings(
+    enabled = this[SettingsKeys.equalizerEnabled] ?: false,
+    presetName = this[SettingsKeys.equalizerPreset],
+    bandLevelsMb = EqualizerLogic.decodeLevels(this[SettingsKeys.equalizerLevels]),
+)
+
 internal val Context.sonaraDataStore: DataStore<Preferences> by preferencesDataStore(name = "sonara_settings")
 
 class SettingsRepository(private val dataStore: DataStore<Preferences>) {
@@ -66,6 +79,25 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) {
             if (error is IOException) emit(emptyPreferences()) else throw error
         }
         .map { it.toSettings() }
+
+    val equalizerSettings: Flow<EqualizerSettings> = dataStore.data
+        .catch { error ->
+            if (error is IOException) emit(emptyPreferences()) else throw error
+        }
+        .map { it.toEqualizerSettings() }
+        .distinctUntilChanged()
+
+    suspend fun setEqualizerSettings(value: EqualizerSettings) {
+        dataStore.edit { prefs ->
+            prefs[SettingsKeys.equalizerEnabled] = value.enabled
+            if (value.presetName != null) prefs[SettingsKeys.equalizerPreset] = value.presetName else prefs.remove(SettingsKeys.equalizerPreset)
+            if (value.bandLevelsMb.isNotEmpty()) {
+                prefs[SettingsKeys.equalizerLevels] = EqualizerLogic.encodeLevels(value.bandLevelsMb)
+            } else {
+                prefs.remove(SettingsKeys.equalizerLevels)
+            }
+        }
+    }
 
     suspend fun setAnimationIntensity(value: AnimationIntensity) {
         dataStore.edit { it[SettingsKeys.animationIntensity] = value.name }
