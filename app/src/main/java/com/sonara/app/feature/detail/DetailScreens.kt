@@ -46,6 +46,7 @@ import com.sonara.app.feature.common.appViewModel
 import com.sonara.app.feature.common.rememberPlaybackActions
 import com.sonara.app.feature.common.rememberCurrentTrackId
 import com.sonara.app.feature.common.rememberTrackMenu
+import com.sonara.app.feature.playlists.LocalPlaylistPicker
 
 /** Which context a track list is shown in; decides numbering, subtitle and which menu entries make sense. */
 private enum class TrackContext { Album, Artist, Mixed }
@@ -202,6 +203,7 @@ private fun CollectionList(
     val navigator = LocalSonaraNavigator.current
     val actions = rememberPlaybackActions()
     val currentTrackId by rememberCurrentTrackId()
+    val picker = LocalPlaylistPicker.current
     val ids = remember(tracks) { tracks.map { it.id } }
     val colors = SonaraTheme.colors
     val typography = SonaraTheme.typography
@@ -223,13 +225,20 @@ private fun CollectionList(
             }
         }
         item {
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = SonaraSpacing.s16),
-                horizontalArrangement = Arrangement.spacedBy(SonaraSpacing.s8),
+                verticalArrangement = Arrangement.spacedBy(SonaraSpacing.s8),
             ) {
-                SonaraButton("PLAY", onClick = { actions.play(ids, 0) }, emphasized = true, modifier = Modifier.weight(1f))
-                SonaraButton("SHUFFLE", onClick = { actions.shuffle(ids) }, modifier = Modifier.weight(1f))
-                SonaraButton("ADD TO QUEUE", onClick = { actions.addToQueue(ids, title) }, modifier = Modifier.weight(1.4f))
+                Row(horizontalArrangement = Arrangement.spacedBy(SonaraSpacing.s8)) {
+                    SonaraButton("PLAY", onClick = { actions.play(ids, 0) }, emphasized = true, modifier = Modifier.weight(1f))
+                    SonaraButton("SHUFFLE", onClick = { actions.shuffle(ids) }, modifier = Modifier.weight(1f))
+                    SonaraButton("ADD TO QUEUE", onClick = { actions.addToQueue(ids, title) }, modifier = Modifier.weight(1.4f))
+                }
+                SonaraButton(
+                    "ADD TO PLAYLIST",
+                    onClick = { picker.add(ids, title) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
         if (beforeTracks != null) beforeTracks() else item { Spacer(Modifier.height(SonaraSpacing.s8)) }

@@ -39,6 +39,10 @@ import com.sonara.app.feature.detail.AlbumDetailScreen
 import com.sonara.app.feature.detail.ArtistDetailScreen
 import com.sonara.app.feature.detail.FolderDetailScreen
 import com.sonara.app.feature.detail.GenreDetailScreen
+import com.sonara.app.feature.playlists.LocalPlaylistPicker
+import com.sonara.app.feature.playlists.PlaylistDetailScreen
+import com.sonara.app.feature.playlists.PlaylistPicker
+import com.sonara.app.feature.playlists.PlaylistPickerHost
 import com.sonara.app.feature.search.SearchScreen
 import com.sonara.app.feature.settings.SettingsScreen
 
@@ -61,6 +65,7 @@ fun SonaraApp() {
     val tabs = rememberSonaraTabsState()
     val snackbar = remember { SonaraSnackbarState() }
     val libraryCategory = remember { mutableStateOf(LibraryCategory.Songs) }
+    val playlistPicker = remember { PlaylistPicker() }
     val currentMotion by rememberUpdatedState(motion)
     val navigator = remember(navController, tabs) {
         SonaraNavigator(libraryCategory, navController, tabs) { currentMotion }
@@ -68,7 +73,11 @@ fun SonaraApp() {
 
     TabsBackHandler(onTabs = onTabs, tabs = tabs, motion = motion)
 
-    CompositionLocalProvider(LocalSonaraNavigator provides navigator, LocalSnackbar provides snackbar) {
+    CompositionLocalProvider(
+        LocalSonaraNavigator provides navigator,
+        LocalSnackbar provides snackbar,
+        LocalPlaylistPicker provides playlistPicker,
+    ) {
     Scaffold(
         containerColor = SonaraTheme.colors.background,
         snackbarHost = { SonaraSnackbarHost(snackbar) },
@@ -120,6 +129,13 @@ fun SonaraApp() {
                 SonaraScreenSurface { AlbumDetailScreen(albumId) }
             }
             composable(
+                route = SonaraRoutes.PLAYLIST,
+                arguments = listOf(navArgument(SonaraRoutes.ARG_PLAYLIST_ID) { type = NavType.LongType }),
+            ) { entry ->
+                val playlistId = entry.arguments?.getLong(SonaraRoutes.ARG_PLAYLIST_ID) ?: return@composable
+                SonaraScreenSurface { PlaylistDetailScreen(playlistId) }
+            }
+            composable(
                 route = SonaraRoutes.ARTIST,
                 arguments = listOf(navArgument(SonaraRoutes.ARG_NAME) { type = NavType.StringType }),
             ) { entry ->
@@ -146,6 +162,7 @@ fun SonaraApp() {
             }
         }
     }
+    PlaylistPickerHost(playlistPicker)
     }
 }
 

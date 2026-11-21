@@ -9,10 +9,25 @@ import androidx.room.Update
 import com.sonara.app.data.local.database.FavouriteEntity
 import com.sonara.app.data.local.database.FolderPermissionState
 import com.sonara.app.data.local.database.PlayHistoryEntity
+import com.sonara.app.data.local.database.PlaylistEntryRow
+import com.sonara.app.data.local.database.PlaylistRow
 import com.sonara.app.data.local.database.PlaylistEntity
 import com.sonara.app.data.local.database.PlaylistTrackEntity
 import com.sonara.app.data.local.database.SelectedFolderEntity
 import kotlinx.coroutines.flow.Flow
+
+/** Shared by the playlist summary queries. Counts are taken against the `tracks` cache. */
+internal const val PLAYLIST_SUMMARY_SELECT =
+    "SELECT p.id AS id, p.name AS name, p.description AS description, p.createdAt AS createdAt, " +
+        "p.updatedAt AS updatedAt, " +
+        "(SELECT COUNT(*) FROM playlist_tracks e WHERE e.playlistId = p.id) AS entryCount, " +
+        "(SELECT COUNT(*) FROM playlist_tracks e JOIN tracks t ON t.id = e.trackId " +
+        "WHERE e.playlistId = p.id) AS trackCount, " +
+        "(SELECT t.id FROM playlist_tracks e JOIN tracks t ON t.id = e.trackId " +
+        "WHERE e.playlistId = p.id ORDER BY e.position ASC, e.id ASC LIMIT 1) AS artworkTrackId, " +
+        "(SELECT COALESCE(SUM(t.durationMs), 0) FROM playlist_tracks e JOIN tracks t ON t.id = e.trackId " +
+        "WHERE e.playlistId = p.id) AS durationMs " +
+        "FROM playlists p"
 
 /** Deleting a playlist cascades to its entries only; audio files are never touched. */
 @Dao
@@ -37,6 +52,55 @@ interface PlaylistDao {
 
     @Query("SELECT COUNT(*) FROM playlists")
     fun observeCount(): Flow<Int>
+
+    // ---- M4 ----
+
+    @Query(PLAYLIST_SUMMARY_SELECT + " ORDER BY p.name COLLATE NOCASE ASC, p.id ASC")
+    fun observeSummaries(): Flow<List<PlaylistRow>>
+
+    @Query(PLAYLIST_SUMMARY_SELECT + " WHERE p.id = :playlistId")
+    fun observeSummary(playlistId: Long): Flow<PlaylistRow?>
+
+    @Query(
+        "SELECT e.id AS entryId, e.trackId AS entryTrackId, e.position AS entryPosition, t.* " +
+            "FROM playlist_tracks e LEFT JOIN tracks t ON t.id = e.trackId " +
+            "WHERE e.playlistId = :playlistId ORDER BY e.position ASC, e.id ASC",
+    )
+    fun observeEntries(playlistId: Long): Flow<List<PlaylistEntryRow>>
+
+    /** Track ids of the entries that still exist in the library, in playlist order. */
+    @Query(
+        "SELECT e.trackId FROM playlist_tracks e JOIN tracks t ON t.id = e.trackId " +
+            "WHERE e.playlistId = :playlistId ORDER BY e.position ASC, e.id ASC",
+    )
+    suspend fun playableTrackIds(playlistId: Long): List<Long>
+
+    @Query("SELECT * FROM playlist_tracks WHERE playlistId = :playlistId ORDER BY position ASC, id ASC")
+    suspend fun entriesOf(playlistId: Long): List<PlaylistTrackEntity>
+
+    @Query("SELECT name FROM playlists")
+    suspend fun allNames(): List<String>
+
+    @Query("SELECT name FROM playlists WHERE id = :playlistId")
+    suspend fun nameOf(playlistId: Long): String?
+
+    @Query("UPDATE playlists SET name = :name, updatedAt = :now WHERE id = :playlistId")
+    suspend fun rename(playlistId: Long, name: String, now: Long)
+
+    @Query("UPDATE playlists SET updatedAt = :now WHERE id = :playlistId")
+    suspend fun touch(playlistId: Long, now: Long)
+
+    @Query("UPDATE playlist_tracks SET position = :position WHERE id = :entryId")
+    suspend fun setPosition(entryId: Long, position: Int)
+
+    @Query("DELETE FROM playlist_tracks WHERE id = :entryId AND playlistId = :playlistId")
+    suspend fun deleteEntry(playlistId: Long, entryId: Long)
+
+    @Query(
+        "DELETE FROM playlist_tracks WHERE playlistId = :playlistId " +
+            "AND trackId NOT IN (SELECT id FROM tracks)",
+    )
+    suspend fun deleteUnavailable(playlistId: Long): Int
 }
 
 @Dao

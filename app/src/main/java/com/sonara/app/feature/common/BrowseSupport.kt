@@ -18,6 +18,8 @@ import com.sonara.app.core.design.components.SonaraMenuAction
 import com.sonara.app.core.design.components.SonaraSnackbarState
 import com.sonara.app.core.navigation.SonaraNavigator
 import com.sonara.app.data.local.database.TrackEntity
+import com.sonara.app.feature.playlists.LocalPlaylistPicker
+import com.sonara.app.feature.playlists.PlaylistPicker
 import com.sonara.app.playback.PlaybackController
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -108,13 +110,18 @@ fun trackMenu(
     track: TrackEntity,
     actions: PlaybackActions,
     navigator: SonaraNavigator,
+    picker: PlaylistPicker,
     showAlbum: Boolean = true,
     showArtist: Boolean = true,
+    /** Entries a particular screen adds at the end, e.g. "remove from playlist". */
+    extra: List<SonaraMenuAction> = emptyList(),
 ): List<SonaraMenuAction> = buildList {
     add(SonaraMenuAction("PLAY NEXT") { actions.playNext(listOf(track.id), track.title) })
     add(SonaraMenuAction("ADD TO QUEUE") { actions.addToQueue(listOf(track.id), track.title) })
+    add(SonaraMenuAction("ADD TO PLAYLIST") { picker.add(listOf(track.id), track.title) })
     if (showAlbum) add(SonaraMenuAction("VIEW ALBUM") { navigator.openAlbum(track.albumId) })
     if (showArtist) add(SonaraMenuAction("VIEW ARTIST") { navigator.openArtist(track.artist) })
+    addAll(extra)
 }
 
 /**
@@ -136,7 +143,10 @@ fun rememberTrackMenu(
     navigator: SonaraNavigator,
     showAlbum: Boolean = true,
     showArtist: Boolean = true,
-): List<SonaraMenuAction> =
-    remember(track, actions, navigator, showAlbum, showArtist) {
-        trackMenu(track, actions, navigator, showAlbum, showArtist)
+    extra: List<SonaraMenuAction> = emptyList(),
+): List<SonaraMenuAction> {
+    val picker = LocalPlaylistPicker.current
+    return remember(track, actions, navigator, picker, showAlbum, showArtist, extra) {
+        trackMenu(track, actions, navigator, picker, showAlbum, showArtist, extra)
     }
+}

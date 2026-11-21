@@ -182,4 +182,15 @@ object SonaraIcons {
             }
         }
     }
+
+    /** Reorder handle: three bars. */
+    val Drag: ImageVector by lazy {
+        icon("Drag") {
+            line {
+                moveTo(5f, 8f); lineTo(19f, 8f)
+                moveTo(5f, 12f); lineTo(19f, 12f)
+                moveTo(5f, 16f); lineTo(19f, 16f)
+            }
+        }
+    }
 }

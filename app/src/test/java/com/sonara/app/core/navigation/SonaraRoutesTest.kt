@@ -45,4 +45,9 @@ class SonaraRoutesTest {
         patterns.forEach { pattern -> assertFalse(taken.any { pattern == it }) }
         assertEquals(patterns.size, patterns.toSet().size)
     }
+
+    @Test
+    fun playlistRouteCarriesTheId() {
+        assertEquals("playlist/42", SonaraRoutes.playlist(42))
+    }
 }

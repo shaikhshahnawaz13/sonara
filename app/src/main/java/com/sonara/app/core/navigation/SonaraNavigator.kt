@@ -36,6 +36,7 @@ class SonaraNavigator(
     fun openSearch() = push(SonaraDestination.Search.route)
     fun openSettings() = push(SonaraDestination.Settings.route)
     fun openAlbum(albumId: Long) = push(SonaraRoutes.album(albumId))
+    fun openPlaylist(playlistId: Long) = push(SonaraRoutes.playlist(playlistId))
     fun openArtist(name: String) = push(SonaraRoutes.artist(name))
     fun openGenre(name: String?) = push(SonaraRoutes.genre(name ?: Genre.UNKNOWN_KEY))
     fun openFolder(path: String, recursive: Boolean) = push(SonaraRoutes.folder(path, recursive))

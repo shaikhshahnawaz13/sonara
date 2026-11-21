@@ -67,13 +67,17 @@ fun SonaraSectionHeader(
 fun SonaraTrackRow(
     title: String,
     subtitle: String,
-    durationMs: Long,
+    durationMs: Long?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     artworkTrackId: Long? = null,
     leadingNumber: Int? = null,
     isCurrent: Boolean = false,
+    /** Muted title, for an entry whose file is not available. */
+    dimmed: Boolean = false,
     menu: List<SonaraMenuAction> = emptyList(),
+    /** Extra control after the menu, such as a reorder handle. */
+    trailing: @Composable () -> Unit = {},
 ) {
     val colors = SonaraTheme.colors
     val typography = SonaraTheme.typography
@@ -101,7 +105,7 @@ fun SonaraTrackRow(
             Text(
                 text = title,
                 style = typography.trackTitle,
-                color = if (isCurrent) colors.accent else colors.foreground,
+                color = if (isCurrent) colors.accent else if (dimmed) colors.foregroundMuted else colors.foreground,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -113,12 +117,15 @@ fun SonaraTrackRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        Text(text = formatDuration(durationMs), style = typography.metadata, color = colors.foregroundMuted)
+        if (durationMs != null) {
+            Text(text = formatDuration(durationMs), style = typography.metadata, color = colors.foregroundMuted)
+        }
         if (menu.isNotEmpty()) {
             SonaraOverflowMenu(actions = menu, contentDescription = "More actions for $title")
         } else {
             Box(modifier = Modifier.width(SonaraSpacing.s12))
         }
+        trailing()
     }
 }
 
@@ -198,6 +205,40 @@ fun SonaraArtistRow(
                 style = typography.metadata,
                 color = colors.foregroundMuted,
             )
+        }
+    }
+}
+
+/** Playlist row: artwork of its first available track, name, counts and an overflow menu. */
+@Composable
+fun SonaraPlaylistRow(
+    name: String,
+    subtitle: String,
+    artworkTrackId: Long?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    menu: List<SonaraMenuAction> = emptyList(),
+) {
+    val colors = SonaraTheme.colors
+    val typography = SonaraTheme.typography
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = 56.dp)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(start = SonaraSpacing.s16, end = SonaraSpacing.s4, top = SonaraSpacing.s4, bottom = SonaraSpacing.s4),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(SonaraSpacing.s12),
+    ) {
+        SonaraArtwork(trackId = artworkTrackId, size = 48.dp)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = name, style = typography.trackTitle, color = colors.foreground, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(text = subtitle, style = typography.metadata, color = colors.foregroundMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        if (menu.isNotEmpty()) {
+            SonaraOverflowMenu(actions = menu, contentDescription = "More actions for $name")
+        } else {
+            Box(modifier = Modifier.width(SonaraSpacing.s12))
         }
     }
 }

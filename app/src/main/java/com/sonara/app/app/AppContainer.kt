@@ -13,6 +13,7 @@ import com.sonara.app.data.media.MediaStoreMarker
 import com.sonara.app.data.media.MediaStoreScanner
 import com.sonara.app.data.repository.FolderRepository
 import com.sonara.app.data.repository.LibraryRepository
+import com.sonara.app.data.repository.PlaylistRepository
 import com.sonara.app.playback.PlaybackController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -55,6 +56,8 @@ class AppContainer(context: Context) {
     }
 
     val folderRepository: FolderRepository by lazy { FolderRepository(database, appContext.contentResolver) }
+
+    val playlistRepository: PlaylistRepository by lazy { PlaylistRepository(database) }
 
     val playbackController: PlaybackController by lazy { PlaybackController(appContext, appScope) }
 

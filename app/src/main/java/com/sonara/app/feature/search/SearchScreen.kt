@@ -33,7 +33,6 @@ import com.sonara.app.core.design.components.SonaraSectionHeader
 import com.sonara.app.core.design.components.SonaraTopBar
 import com.sonara.app.core.design.components.SonaraTrackRow
 import com.sonara.app.core.navigation.LocalSonaraNavigator
-import com.sonara.app.core.navigation.SonaraDestination
 import com.sonara.app.core.permissions.AudioAccessState
 import com.sonara.app.data.model.SearchEngine
 import com.sonara.app.data.model.SearchResults
@@ -194,7 +193,7 @@ private fun ResultsList(results: SearchResults, onChosen: () -> Unit) {
                     subtitle = playlist.description ?: "Playlist",
                     onClick = {
                         onChosen()
-                        navigator.openTab(SonaraDestination.Playlists)
+                        navigator.openPlaylist(playlist.id)
                     },
                 )
             }

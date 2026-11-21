@@ -121,3 +121,13 @@ All motion numbers live in `core/animation/SonaraMotion.kt` (`MotionTokens`). Co
 - **Scrolling**: artwork is served from memory synchronously when cached, decoded off the main thread at most 3 at a time, and abandoned when its row scrolls away; album tiles no longer use `BoxWithConstraints`; rows no longer observe the whole playback state; lazy items carry stable keys and content types.
 - **Logo and icons**: `branding/sonara-logo-source.webp` is the supplied logo. The launcher icon, splash icon and in-app mark are traced from it (not redrawn). `SonaraIcons` is the single icon family.
 - **Judging smoothness**: use the `perf` build (`./gradlew :app:assemblePerf`, uploaded by CI as `SONARA-perf-apk`). Debug builds run Compose unoptimised and understate smoothness.
+
+
+## M4 - Playlists
+
+- Create (with a custom name), rename and delete playlists; names are trimmed, limited to 60 characters and unique ignoring case.
+- The Playlists tab lists every playlist with its real track count, total duration and the artwork of its first available track. Tapping opens the playlist.
+- Add songs from any song menu (Home, Library, Search, album, artist, genre, folder and playlist screens) and whole albums, artists, genres and folders through ADD TO PLAYLIST. Tracks already in the playlist are skipped and reported.
+- In a playlist: play from any song, PLAY, SHUFFLE, ADD TO QUEUE, remove a song, reorder by dragging the grip (or MOVE UP / MOVE DOWN in the row menu).
+- Entries whose audio file is no longer in the library stay visible as "Unavailable track" and can be removed one by one or all at once; they are skipped when playing.
+- Playlists live in the existing Room tables `playlists` and `playlist_tracks` (no schema change, no migration), so they survive restarts.

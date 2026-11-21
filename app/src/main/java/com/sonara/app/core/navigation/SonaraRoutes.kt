@@ -6,16 +6,19 @@ package com.sonara.app.core.navigation
  */
 object SonaraRoutes {
     const val ARG_ALBUM_ID = "albumId"
+    const val ARG_PLAYLIST_ID = "playlistId"
     const val ARG_NAME = "name"
     const val ARG_PATH = "path"
     const val ARG_RECURSIVE = "recursive"
 
     const val ALBUM = "album/{$ARG_ALBUM_ID}"
+    const val PLAYLIST = "playlist/{$ARG_PLAYLIST_ID}"
     const val ARTIST = "artist?$ARG_NAME={$ARG_NAME}"
     const val GENRE = "genre?$ARG_NAME={$ARG_NAME}"
     const val FOLDER = "folder?$ARG_PATH={$ARG_PATH}&$ARG_RECURSIVE={$ARG_RECURSIVE}"
 
     fun album(albumId: Long) = "album/$albumId"
+    fun playlist(playlistId: Long) = "playlist/$playlistId"
     fun artist(name: String) = "artist?$ARG_NAME=${encode(name)}"
     fun genre(name: String) = "genre?$ARG_NAME=${encode(name)}"
     fun folder(path: String, recursive: Boolean) = "folder?$ARG_PATH=${encode(path)}&$ARG_RECURSIVE=$recursive"
