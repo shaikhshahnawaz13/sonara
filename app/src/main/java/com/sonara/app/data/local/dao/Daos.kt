@@ -81,6 +81,20 @@ interface PlaylistDao {
     @Query("SELECT name FROM playlists")
     suspend fun allNames(): List<String>
 
+    /** The Favourites playlist: the oldest one whose name is any of [names], ignoring case. */
+    @Query("SELECT id FROM playlists WHERE name COLLATE NOCASE IN (:names) ORDER BY id ASC LIMIT 1")
+    suspend fun findIdByNames(names: List<String>): Long?
+
+    /** Track ids in the Favourites playlist. Re-emits whenever that playlist or its entries change. */
+    @Query(
+        "SELECT e.trackId FROM playlist_tracks e WHERE e.playlistId = " +
+            "(SELECT id FROM playlists WHERE name COLLATE NOCASE IN (:names) ORDER BY id ASC LIMIT 1)",
+    )
+    fun observeTrackIdsOfNamed(names: List<String>): Flow<List<Long>>
+
+    @Query("DELETE FROM playlist_tracks WHERE playlistId = :playlistId AND trackId = :trackId")
+    suspend fun deleteByTrack(playlistId: Long, trackId: Long): Int
+
     @Query("SELECT name FROM playlists WHERE id = :playlistId")
     suspend fun nameOf(playlistId: Long): String?
 

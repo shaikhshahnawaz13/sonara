@@ -229,7 +229,11 @@ object SonaraIcons {
         }
     }
 
-    /** [Repeat] with a "1" in the middle. */
+    /**
+     * [Repeat] with a "1" in the middle. The loop is exactly [Repeat]'s; the "1" is a separate stroke whose
+     * bounds are centred on the loop's centre (see [RepeatOneGlyph]) and which uses a bevelled join, so its
+     * sharp top corner cannot spike into the loop's upper line.
+     */
     val RepeatOne: ImageVector by lazy {
         icon("RepeatOne") {
             line {
@@ -237,7 +241,17 @@ object SonaraIcons {
                 moveTo(15f, 5f); lineTo(18.5f, 8f); lineTo(15f, 11f)
                 moveTo(20f, 13f); lineTo(20f, 16f); lineTo(6f, 16f)
                 moveTo(9f, 13f); lineTo(5.5f, 16f); lineTo(9f, 19f)
-                moveTo(11f, 10.5f); lineTo(12.5f, 9.5f); lineTo(12.5f, 14.5f)
+            }
+            path(
+                fill = null,
+                stroke = SolidColor(Color.Black),
+                strokeLineWidth = STROKE,
+                strokeLineCap = StrokeCap.Butt,
+                strokeLineJoin = StrokeJoin.Bevel,
+            ) {
+                moveTo(RepeatOneGlyph.FLAG_X, RepeatOneGlyph.FLAG_Y)
+                lineTo(RepeatOneGlyph.STEM_X, RepeatOneGlyph.TOP_Y)
+                lineTo(RepeatOneGlyph.STEM_X, RepeatOneGlyph.BOTTOM_Y)
             }
         }
     }
@@ -288,4 +302,24 @@ object SonaraIcons {
             }
         }
     }
+}
+
+/**
+ * Geometry of the "1" in the Repeat One icon, in the icon's 24-unit viewport. The glyph's bounds are centred on
+ * the loop's centre ([CENTER_X], [CENTER_Y]) in both directions, so it is balanced at every size and density
+ * (the viewport scales as one piece); nothing is an offset applied at draw time.
+ */
+internal object RepeatOneGlyph {
+    const val CENTER_X = 12f
+    const val CENTER_Y = 12f
+    const val STEM_X = 13f
+    const val TOP_Y = 10f
+    const val BOTTOM_Y = 14f
+    const val FLAG_X = 11f
+    const val FLAG_Y = 11.5f
+
+    val minX: Float get() = minOf(STEM_X, FLAG_X)
+    val maxX: Float get() = maxOf(STEM_X, FLAG_X)
+    val minY: Float get() = minOf(TOP_Y, BOTTOM_Y, FLAG_Y)
+    val maxY: Float get() = maxOf(TOP_Y, BOTTOM_Y, FLAG_Y)
 }

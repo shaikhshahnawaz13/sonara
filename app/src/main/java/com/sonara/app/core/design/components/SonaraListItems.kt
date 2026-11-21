@@ -15,23 +15,22 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import com.sonara.app.core.common.formatDuration
 import com.sonara.app.core.design.SonaraBorders
 import com.sonara.app.core.design.SonaraSizes
 import com.sonara.app.core.design.SonaraSpacing
 import com.sonara.app.core.design.SonaraTheme
-import kotlin.math.roundToInt
 
 /** Section title with an optional text action on the right. */
 @Composable
@@ -93,8 +92,8 @@ fun SonaraTrackRow(
     locked: Boolean = false,
     lockedLabel: String = "ADDED",
     /**
-     * How far the checkbox column has opened, 0..1. Read while measuring, so animating it re-lays out the row
-     * without recomposing it. Rows have a stable width otherwise: the text only moves while this changes.
+     * How far the checkbox column has opened, 0..1. Read only while drawing (a clip and a translation), so
+     * animating it neither recomposes nor re-measures the row: the text keeps one width for the whole transition.
      */
     selectionReveal: () -> Float = ALWAYS_OPEN,
 ) {
@@ -121,23 +120,27 @@ fun SonaraTrackRow(
             .padding(start = SonaraSpacing.s16, end = SonaraSpacing.s4, top = SonaraSpacing.s4, bottom = SonaraSpacing.s4),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // In selection mode the left group always reserves the checkbox column (22dp box + 12dp gap) and slides
+        // left by the closed part of it; the checkbox is clipped to the opened part. Both only happen at draw time.
+        val slot = if (selected != null) CHECKBOX_SLOT_BOX + CHECKBOX_SLOT_GAP else 0.dp
+        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
         if (selected != null) {
-            // The column is 22dp of checkbox plus the 12dp gap to the artwork, so the gap opens with it.
             Box(
-                modifier = Modifier
-                    .layout { measurable, _ ->
-                        val box = CHECKBOX_SLOT_BOX.roundToPx()
-                        val placeable = measurable.measure(Constraints.fixed(box, box))
-                        val width = ((box + CHECKBOX_SLOT_GAP.roundToPx()) * selectionReveal().coerceIn(0f, 1f)).roundToInt()
-                        layout(width, placeable.height) { placeable.placeRelative(0, 0) }
-                    }
-                    .clipToBounds(),
+                modifier = Modifier.drawWithContent {
+                    val open = selectionReveal().coerceIn(0f, 1f)
+                    clipRect(right = slot.toPx() * open) { this@drawWithContent.drawContent() }
+                },
             ) {
                 SonaraCheckbox(checked = selected || locked, enabled = !locked)
             }
         }
         Row(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = slot)
+                .graphicsLayer {
+                    if (selected != null) translationX = -slot.toPx() * (1f - selectionReveal().coerceIn(0f, 1f))
+                },
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(SonaraSpacing.s12),
         ) {
@@ -168,17 +171,24 @@ fun SonaraTrackRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        if (locked) {
-            Text(text = lockedLabel, style = typography.microLabel, color = colors.foregroundMuted)
-        } else if (durationMs != null) {
-            Text(text = formatDuration(durationMs), style = typography.metadata, color = colors.foregroundMuted)
         }
-        if (menu.isNotEmpty()) {
-            SonaraOverflowMenu(actions = menu, contentDescription = "More actions for $title")
-        } else {
-            Box(modifier = Modifier.width(SonaraSpacing.s12))
         }
-        trailing()
+        Row(
+            modifier = Modifier.padding(start = SonaraSpacing.s12),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(SonaraSpacing.s12),
+        ) {
+            if (locked) {
+                Text(text = lockedLabel, style = typography.microLabel, color = colors.foregroundMuted)
+            } else if (durationMs != null) {
+                Text(text = formatDuration(durationMs), style = typography.metadata, color = colors.foregroundMuted)
+            }
+            if (menu.isNotEmpty()) {
+                SonaraOverflowMenu(actions = menu, contentDescription = "More actions for $title")
+            } else {
+                Box(modifier = Modifier.width(SonaraSpacing.s12))
+            }
+            trailing()
         }
     }
 }

@@ -14,6 +14,20 @@ enum class RepeatSetting(val playerValue: Int) {
         One -> Off
     }
 
+    /** The repeat button is lit for any mode but Off. */
+    val isActive: Boolean get() = this != Off
+
+    /** Repeat One draws a "1" inside the loop; the other modes use the plain loop. */
+    val showsOneGlyph: Boolean get() = this == One
+
+    /** What a screen reader says about the button. */
+    val contentDescription: String
+        get() = when (this) {
+            Off -> "Repeat off"
+            All -> "Repeat all"
+            One -> "Repeat one"
+        }
+
     companion object {
         fun fromPlayerValue(value: Int): RepeatSetting = entries.firstOrNull { it.playerValue == value } ?: Off
     }

@@ -239,18 +239,26 @@ private fun PlaylistBody(
     val density = LocalDensity.current
     val haptics = LocalHapticFeedback.current
 
-    val motion2 = SonaraTheme.motion
-    // Checkboxes: the column opens and closes with this value (read while measuring, not composing).
+    val motion2 = motion
+    // Checkboxes: the column opens and closes with this value (read while drawing, not composing).
     val reveal = remember { Animatable(if (editing) 1f else 0f) }
     val revealValue = remember { { reveal.value } }
     var checksVisible by remember { mutableStateOf(editing) }
+    // True while the EDIT transition runs. The header's height changes every frame then, which would otherwise
+    // retarget a placement animation on every visible row each frame; rows follow the header directly instead.
+    var editTransitioning by remember { mutableStateOf(false) }
     LaunchedEffect(editing) {
-        if (editing) {
-            checksVisible = true
-            reveal.animateTo(1f, motion2.editSpec())
-        } else {
-            reveal.animateTo(0f, motion2.editSpec())
-            checksVisible = false
+        editTransitioning = true
+        try {
+            if (editing) {
+                checksVisible = true
+                reveal.animateTo(1f, motion2.editSpec())
+            } else {
+                reveal.animateTo(0f, motion2.editSpec())
+                checksVisible = false
+            }
+        } finally {
+            editTransitioning = false
         }
     }
     var selection by remember { mutableStateOf(Selection.NONE) }
@@ -337,7 +345,7 @@ private fun PlaylistBody(
             } else {
                 Modifier.animateItem(
                     fadeInSpec = null,
-                    placementSpec = if (motion.isOff) snap<IntOffset>() else tween<IntOffset>(PLACEMENT_MS),
+                    placementSpec = if (motion.isOff || editTransitioning) snap<IntOffset>() else tween<IntOffset>(PLACEMENT_MS),
                     fadeOutSpec = null,
                 )
             }

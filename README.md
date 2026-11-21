@@ -147,3 +147,13 @@ All motion numbers live in `core/animation/SonaraMotion.kt` (`MotionTokens`). Co
 - **Overflow menu**: its animation now starts only once the popup window is on screen.
 - **Playlist EDIT mode**: EDIT/DONE and the title slide into each other, the checkbox column opens in the layout, the bottom bar expands vertically; scroll position is untouched.
 - No schema change; no second player instance.
+
+## M5.1 - Focused polish
+
+- **Favourite heart**: now adds to and removes from the real "Favourites" playlist through `PlaylistRepository.toggleFavourite`
+  (one Room transaction; creates the playlist if missing; no duplicates). The icon reads the playlist's track ids, so it
+  follows track changes and survives restarts. A failed write shows a snackbar and leaves the icon unchanged.
+  The old standalone `favourites` table is no longer used.
+- **Playlist EDIT transition**: same animation; row placement is snapped while it runs and the checkbox column is
+  revealed at draw time only, so rows are not re-measured per frame. Inferred from code, not profiled: verify on a device.
+- **Repeat One**: the "1" is centred on the loop and drawn with a bevelled join.

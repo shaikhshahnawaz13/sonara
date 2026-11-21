@@ -42,7 +42,7 @@ import com.sonara.app.core.design.components.SonaraIcons
 import com.sonara.app.core.design.components.SonaraPlayerArtwork
 import com.sonara.app.playback.PlaybackController
 import com.sonara.app.playback.PlaybackUiState
-import com.sonara.app.playback.RepeatSetting
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -117,8 +117,11 @@ private fun PlayerSurface(
     // Extras do nothing until the surface has landed, so a tap on a half-revealed control is not a command.
     val interactive by remember { derivedStateOf { sheet.progress.value >= INTERACTIVE_AT } }
 
-    val favourites = container.favouritesRepository
-    val favouriteIds by favourites.trackIds.collectAsStateWithLifecycle(initialValue = emptySet())
+    // The heart shows the Favourites playlist and nothing else. Until the database has answered it is neither
+    // filled nor tappable, rather than guessing.
+    val playlists = container.playlistRepository
+    val favouriteIds: Set<Long>? by playlists.favouriteTrackIds.collectAsStateWithLifecycle<Set<Long>?, Set<Long>?>(initialValue = null)
+    val snackbar = LocalSnackbar.current
     val queue by controller.queue.collectAsStateWithLifecycle()
     val position = controller.positionMs.collectAsStateWithLifecycle()
 
@@ -155,7 +158,7 @@ private fun PlayerSurface(
                     val trackId = state.currentTrackId
                     val showPause = state.showsPause
                     val buffering = state.isWaitingToPlay
-                    val isFavourite = trackId != null && trackId in favouriteIds
+                    val isFavourite = trackId != null && favouriteIds?.contains(trackId) == true
 
                     SonaraPlayerArtwork(trackId, Modifier.layoutId(PlayerSlot.Art))
                     Text(
@@ -205,8 +208,17 @@ private fun PlayerSurface(
                         icon = if (isFavourite) SonaraIcons.HeartFilled else SonaraIcons.Heart,
                         contentDescription = if (isFavourite) "Remove from favourites" else "Add to favourites",
                         onClick = {
-                            if (interactive && trackId != null) {
-                                container.appScope.launch { favourites.setFavourite(trackId, !isFavourite) }
+                            if (interactive && trackId != null && favouriteIds != null) {
+                                container.appScope.launch {
+                                    try {
+                                        playlists.toggleFavourite(trackId)
+                                    } catch (e: CancellationException) {
+                                        throw e
+                                    } catch (e: Exception) {
+                                        // Nothing was changed, and the icon follows the database, so it stays truthful.
+                                        snackbar.show("COULD NOT UPDATE FAVOURITES")
+                                    }
+                                }
                             }
                         },
                         tint = if (isFavourite) colors.accent else null,
@@ -226,14 +238,10 @@ private fun PlayerSurface(
                         modifier = Modifier.layoutId(PlayerSlot.Shuffle),
                     )
                     SonaraIconButton(
-                        icon = if (state.repeat == RepeatSetting.One) SonaraIcons.RepeatOne else SonaraIcons.Repeat,
-                        contentDescription = when (state.repeat) {
-                            RepeatSetting.Off -> "Repeat off"
-                            RepeatSetting.All -> "Repeat all"
-                            RepeatSetting.One -> "Repeat one"
-                        },
+                        icon = if (state.repeat.showsOneGlyph) SonaraIcons.RepeatOne else SonaraIcons.Repeat,
+                        contentDescription = state.repeat.contentDescription,
                         onClick = { if (interactive) controller.cycleRepeat() },
-                        tint = if (state.repeat == RepeatSetting.Off) colors.foregroundMuted else colors.accent,
+                        tint = if (state.repeat.isActive) colors.accent else colors.foregroundMuted,
                         modifier = Modifier.layoutId(PlayerSlot.Repeat),
                     )
                     PlayerSeekBar(

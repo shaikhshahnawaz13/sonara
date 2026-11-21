@@ -63,6 +63,18 @@ object PlaylistRules {
         return if (clash) PlaylistNameError.Duplicate else null
     }
 
+    /** Names the heart looks for, in this order of preference. Matched ignoring case. */
+    val FAVOURITES_NAMES: List<String> = listOf("Favourites", "Favourite", "Favorites", "Favorite")
+
+    /** What a new Favourites playlist is called when none exists yet. */
+    const val FAVOURITES_DEFAULT_NAME = "Favourites"
+
+    fun isFavouritesName(name: String): Boolean = FAVOURITES_NAMES.any { it.equals(normalizeName(name), ignoreCase = true) }
+
+    /** What tapping the heart does for [trackId], given the track ids the Favourites playlist holds right now. */
+    fun favouriteChange(favouriteTrackIds: Collection<Long>, trackId: Long): FavouriteChange =
+        if (trackId in favouriteTrackIds) FavouriteChange.Remove else FavouriteChange.Add
+
     /** The tracks of [incoming] that may be appended: no repeats, and none already in the playlist. */
     fun planAppend(existing: Collection<Long>, incoming: List<Long>): List<Long> {
         val seen = HashSet<Long>(existing)
@@ -79,3 +91,6 @@ object PlaylistRules {
 
     private val WHITESPACE = Regex("\\s+")
 }
+
+/** The effect of a tap on the heart. */
+enum class FavouriteChange { Add, Remove }

@@ -4,6 +4,7 @@ import androidx.room.withTransaction
 import com.sonara.app.data.local.database.PlaylistEntity
 import com.sonara.app.data.local.database.PlaylistTrackEntity
 import com.sonara.app.data.local.database.SonaraDatabase
+import com.sonara.app.data.model.FavouriteChange
 import com.sonara.app.data.model.PlaylistEntry
 import com.sonara.app.data.model.PlaylistNameError
 import com.sonara.app.data.model.PlaylistRules
@@ -11,6 +12,7 @@ import com.sonara.app.data.model.PlaylistSummary
 import com.sonara.app.data.model.toEntry
 import com.sonara.app.data.model.toSummary
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
 /** Outcome of creating or renaming a playlist. */
@@ -37,6 +39,45 @@ class PlaylistRepository(private val database: SonaraDatabase) {
 
     fun entries(playlistId: Long): Flow<List<PlaylistEntry>> =
         dao.observeEntries(playlistId).map { rows -> rows.map { it.toEntry() } }
+
+    /**
+     * The tracks in the Favourites playlist, straight from the database: the heart shows this and nothing else,
+     * so it can never disagree with the playlist.
+     */
+    val favouriteTrackIds: Flow<Set<Long>> = dao.observeTrackIdsOfNamed(PlaylistRules.FAVOURITES_NAMES)
+        .map { it.toHashSet() }
+        .distinctUntilChanged()
+
+    /**
+     * Adds the track to the Favourites playlist, or removes it if it is there, in one transaction that decides
+     * from what the database holds at that moment (so quick repeated taps alternate correctly). The playlist is
+     * created when it does not exist. Returns whether the track is a favourite afterwards. Throws on a
+     * database failure and then changes nothing.
+     */
+    suspend fun toggleFavourite(trackId: Long, now: Long = System.currentTimeMillis()): Boolean =
+        database.withTransaction {
+            var playlistId = dao.findIdByNames(PlaylistRules.FAVOURITES_NAMES)
+            val held = playlistId?.let { id -> dao.entriesOf(id).map { it.trackId } }.orEmpty()
+            when (PlaylistRules.favouriteChange(held, trackId)) {
+                FavouriteChange.Add -> {
+                    if (playlistId == null) {
+                        playlistId = dao.insert(
+                            PlaylistEntity(name = PlaylistRules.FAVOURITES_DEFAULT_NAME, createdAt = now, updatedAt = now),
+                        )
+                    }
+                    addTracks(playlistId, listOf(trackId), now)
+                    true
+                }
+                FavouriteChange.Remove -> {
+                    val id = checkNotNull(playlistId)
+                    if (dao.deleteByTrack(id, trackId) > 0) {
+                        renumber(id)
+                        dao.touch(id, now)
+                    }
+                    false
+                }
+            }
+        }
 
     /** Track ids that can be played now, in order. Missing files are left out. */
     suspend fun playableTrackIds(playlistId: Long): List<Long> = dao.playableTrackIds(playlistId)
