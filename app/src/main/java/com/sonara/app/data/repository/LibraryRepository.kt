@@ -17,6 +17,7 @@ import com.sonara.app.data.model.Genre
 import com.sonara.app.data.model.toAlbum
 import com.sonara.app.data.model.toArtist
 import com.sonara.app.data.model.toGenre
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,7 +32,15 @@ import kotlinx.coroutines.sync.withLock
 sealed interface SyncState {
     data object Idle : SyncState
     data object Scanning : SyncState
-    data class Done(val total: Int, val added: Int, val updated: Int, val removed: Int, val skipped: Boolean) : SyncState
+    data class Done(
+        val total: Int,
+        val added: Int,
+        val updated: Int,
+        val removed: Int,
+        val skipped: Boolean,
+        /** Songs MediaStore has that the folder exclusions keep out of the library. */
+        val excluded: Int = 0,
+    ) : SyncState
     data class Failed(val message: String) : SyncState
 }
 
@@ -45,6 +54,8 @@ class LibraryRepository(
     private val settings: SettingsRepository,
     private val resolver: ContentResolver,
     private val onLibraryRescanned: () -> Unit = {},
+    private val hasAudioAccess: () -> Boolean = { true },
+    private val clock: () -> Long = System::currentTimeMillis,
 ) {
     private val trackDao = database.trackDao()
     private val mutex = Mutex()
@@ -82,12 +93,24 @@ class LibraryRepository(
 
     /**
      * Brings Room in line with MediaStore. Unless [force] is set, a scan is skipped when MediaStore reports
-     * the same version/generation as after the previous scan.
+     * the same version/generation as after the previous scan and the folder exclusions are the same.
+     *
+     * Nothing is changed unless the whole scan succeeded and passed [ScanSafety]. A refused permission, a
+     * failing query or an empty answer leaves the stored library, the scan marker and the last-scan time alone.
      */
     suspend fun sync(force: Boolean) = mutex.withLock {
         try {
-            // Read the marker before scanning so a change made during the scan triggers the next one.
-            val currentMarker = marker.current()
+            if (!hasAudioAccess()) {
+                _syncState.value = SyncState.Failed(
+                    (ScanSafety.verify(permissionGranted = false, storedCount = 0, rawScannedCount = 0) as ScanVerdict.Reject).reason,
+                )
+                return@withLock
+            }
+            val prefs = settings.libraryPrefs.first()
+            val excluded = prefs.excludedFolders
+            // Read the marker before scanning so a change made during the scan triggers the next one. The
+            // exclusions are part of it: changing them must scan again even if MediaStore did not change.
+            val currentMarker = marker.current() + FolderExclusions.stamp(excluded)
             if (!force && currentMarker == settings.settings.first().libraryScanMarker) {
                 _syncState.value = SyncState.Done(
                     total = trackDao.fingerprints().size, added = 0, updated = 0, removed = 0, skipped = true,
@@ -95,15 +118,26 @@ class LibraryRepository(
                 return@withLock
             }
             _syncState.value = SyncState.Scanning
-            val scanned = scanner.scan()
-            val diff = LibraryDiffer.compute(trackDao.fingerprints(), scanned)
+            val raw = scanner.scan()
+            val stored = trackDao.fingerprints()
+            when (val verdict = ScanSafety.verify(hasAudioAccess(), stored.size, raw.size)) {
+                is ScanVerdict.Reject -> {
+                    _syncState.value = SyncState.Failed(verdict.reason)
+                    return@withLock
+                }
+                ScanVerdict.Accept -> Unit
+            }
+            val scanned = FolderExclusions.filter(raw, excluded)
+            val diff = LibraryDiffer.compute(stored, scanned)
             if (!diff.isEmpty) {
                 database.withTransaction {
                     diff.toUpsert.chunked(UPSERT_CHUNK).forEach { trackDao.upsertAll(it) }
                     diff.toDeleteIds.chunked(DELETE_CHUNK).forEach { trackDao.deleteByIds(it) }
                 }
             }
+            // Only now, with the change applied, is the scan recorded.
             settings.setLibraryScanMarker(currentMarker)
+            settings.setLastScanAt(clock())
             onLibraryRescanned()
             _syncState.value = SyncState.Done(
                 total = scanned.size,
@@ -111,11 +145,14 @@ class LibraryRepository(
                 updated = diff.updated,
                 removed = diff.toDeleteIds.size,
                 skipped = false,
+                excluded = raw.size - scanned.size,
             )
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: SecurityException) {
-            _syncState.value = SyncState.Failed("Audio access was refused by the system.")
+            _syncState.value = SyncState.Failed("Audio access was refused by the system, so the library was left as it is.")
         } catch (e: Exception) {
-            _syncState.value = SyncState.Failed(e.message ?: e.javaClass.simpleName)
+            _syncState.value = SyncState.Failed("The scan did not finish, so the library was left as it is. (${e.message ?: e.javaClass.simpleName})")
         }
     }
 

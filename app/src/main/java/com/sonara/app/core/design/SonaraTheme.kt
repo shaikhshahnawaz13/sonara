@@ -37,12 +37,14 @@ object SonaraTheme {
 @Composable
 fun SonaraTheme(
     motionLevel: MotionLevel = MotionLevel.Full,
+    accent: AccentChoice = AccentChoice.default,
     content: @Composable () -> Unit,
 ) {
     val motion = remember(motionLevel) { SonaraMotion(motionLevel) }
-    // Tokens never change, so they are built once. Rebuilding them (and the Material mapping below) on every
-    // recomposition of the root would hand every screen new instances to compare for no reason.
-    val colors = remember { SonaraColors() }
+    // Tokens change only when the accent does, so they are built once per accent. Rebuilding them (and the
+    // Material mapping below) on every recomposition of the root would hand every screen new instances to
+    // compare for no reason.
+    val colors = remember(accent) { SonaraColors().withAccent(accent) }
     val typography = remember { SonaraTypography() }
     val shapes = remember { SonaraShapes() }
 

@@ -36,3 +36,7 @@ data class SonaraColors(
     val borderMuted: Color = Color(SonaraPalette.BORDER_MUTED),
     val danger: Color = Color(SonaraPalette.DANGER),
 )
+
+/** The palette with the chosen accent. Everything that is not the accent is fixed. */
+fun SonaraColors.withAccent(choice: AccentChoice): SonaraColors =
+    if (choice == AccentChoice.default) this else copy(accent = Color(choice.argb), onAccent = Color(choice.onArgb))

@@ -81,7 +81,7 @@ fun LibraryScreen() {
     val container = LocalAppContainer.current
     val navigator = LocalSonaraNavigator.current
     val snackbar = LocalSnackbar.current
-    val viewModel = appViewModel { LibraryViewModel(it.libraryRepository) }
+    val viewModel = appViewModel { LibraryViewModel(it.libraryRepository, it.settingsRepository) }
     val access by container.audioAccess.state.collectAsStateWithLifecycle()
     val sync by viewModel.syncState.collectAsStateWithLifecycle()
     val category by navigator.libraryCategory

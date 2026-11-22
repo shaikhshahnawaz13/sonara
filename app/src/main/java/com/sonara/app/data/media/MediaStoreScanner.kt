@@ -23,7 +23,10 @@ class MediaStoreScanner(
             "${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.Audio.Media.DURATION} > 0",
             null,
             "${MediaStore.Audio.Media._ID} ASC",
-        ) ?: return@withContext rows
+        )
+            // A null cursor means MediaStore did not answer, which is not the same as "no music". Failing here
+            // keeps the caller from reading it as an empty library.
+            ?: throw IllegalStateException("MediaStore did not answer")
 
         cursor.use { c ->
             val id = c.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)

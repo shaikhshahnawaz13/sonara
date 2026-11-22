@@ -2,14 +2,11 @@ package com.sonara.app.core.navigation
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.EnterExitState
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -51,6 +48,8 @@ import com.sonara.app.feature.playlists.PlaylistSongPickerScreen
 import com.sonara.app.feature.playlists.PlaylistPicker
 import com.sonara.app.feature.playlists.PlaylistPickerHost
 import com.sonara.app.feature.search.SearchScreen
+import com.sonara.app.feature.settings.ExcludedFoldersScreen
+import com.sonara.app.feature.settings.LicensesScreen
 import com.sonara.app.feature.settings.SettingsScreen
 
 private val primaryNavItems: List<SonaraNavItem> =
@@ -85,6 +84,13 @@ fun SonaraApp() {
 
     TabsBackHandler(onTabs = onTabs, tabs = tabs, motion = motion)
 
+    // Starts from the real destination, so restoring into a deeper screen never shows the bar for a frame.
+    val chrome = remember { BottomChromeState(shown = onTabs) }
+    LaunchedEffect(onTabs) {
+        // Same duration and curve as the screen slide it accompanies (push on the way in, pop on the way out).
+        if (onTabs) chrome.emerge(currentMotion.popSpec()) else chrome.retract(currentMotion.pushSpec())
+    }
+
     CompositionLocalProvider(
         LocalSonaraNavigator provides navigator,
         LocalSnackbar provides snackbar,
@@ -94,17 +100,22 @@ fun SonaraApp() {
         containerColor = SonaraTheme.colors.background,
         snackbarHost = { SonaraSnackbarHost(snackbar) },
         bottomBar = {
-            Column {
-                AppMiniPlayer(applyNavigationInset = !onTabs, sheet = playerSheet, onExpand = openPlayer)
-                if (onTabs) {
+            // The bar is always composed and never recreated: it retracts below the screen edge when a deeper
+            // screen opens and emerges from it on return (see BottomChrome). It takes layout space only while
+            // it is shown and settled.
+            SonaraBottomChrome(
+                state = chrome,
+                reserved = onTabs && chrome.emerged,
+                mini = { AppMiniPlayer(sheet = playerSheet, onExpand = openPlayer) },
+                nav = {
                     SonaraBottomNavigation(
                         items = primaryNavItems,
                         selectedIndex = tabs.selectedPage,
                         indicatorPosition = { tabs.position },
                         onSelect = { index -> tabs.select(index, motion) },
                     )
-                }
-            }
+                },
+            )
         },
     ) { innerPadding ->
         NavHost(
@@ -132,6 +143,12 @@ fun SonaraApp() {
             }
             composable(SonaraDestination.Settings.route) {
                 SonaraScreenSurface { SettingsScreen(onBack = { navController.popBackStack() }) }
+            }
+            composable(SonaraDestination.ExcludedFolders.route) {
+                SonaraScreenSurface { ExcludedFoldersScreen(onBack = { navController.popBackStack() }) }
+            }
+            composable(SonaraDestination.Licenses.route) {
+                SonaraScreenSurface { LicensesScreen(onBack = { navController.popBackStack() }) }
             }
             composable(SonaraDestination.Equalizer.route) {
                 SonaraScreenSurface { EqualizerScreen(onBack = { navController.popBackStack() }) }
@@ -203,7 +220,7 @@ private fun TabsBackHandler(onTabs: Boolean, tabs: SonaraTabsState, motion: Sona
 
 /** Now-playing bar above the navigation; shown only while the playback service has a track loaded. */
 @Composable
-private fun AppMiniPlayer(applyNavigationInset: Boolean, sheet: PlayerSheetState, onExpand: () -> Unit) {
+private fun AppMiniPlayer(sheet: PlayerSheetState, onExpand: () -> Unit) {
     val controller = LocalAppContainer.current.playbackController
     val state by controller.state.collectAsState()
     if (!state.connected || !state.hasMedia) return
@@ -219,6 +236,5 @@ private fun AppMiniPlayer(applyNavigationInset: Boolean, sheet: PlayerSheetState
         onExpand = onExpand,
         hidden = sheet.overlayShown,
         onBounds = sheet::updateMiniBounds,
-        modifier = if (applyNavigationInset) Modifier.windowInsetsPadding(WindowInsets.navigationBars) else Modifier,
     )
 }

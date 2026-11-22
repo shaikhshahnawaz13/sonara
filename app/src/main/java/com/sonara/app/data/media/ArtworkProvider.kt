@@ -62,6 +62,15 @@ class ArtworkProvider(
         return bitmap
     }
 
+    /** Bytes of artwork currently held in memory. */
+    fun cachedBytes(): Long = synchronized(cache) { cache.size().toLong() }
+
+    /** Drops every decoded image and every "no artwork" answer. Artwork is decoded again when a row needs it. */
+    fun clear() = synchronized(cache) {
+        cache.evictAll()
+        missing.clear()
+    }
+
     /** Forget "no artwork" results, e.g. after a rescan, since tags may have changed. */
     fun clearMisses() = synchronized(cache) { missing.clear() }
 

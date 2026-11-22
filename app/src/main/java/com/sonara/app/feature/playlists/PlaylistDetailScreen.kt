@@ -44,10 +44,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalHapticFeedback
+import com.sonara.app.core.design.components.LocalSonaraHaptics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -209,7 +208,8 @@ fun PlaylistDetailScreen(playlistId: Long) {
         DetailDialog.RemoveUnavailable -> SonaraConfirmDialog(
             title = "REMOVE UNAVAILABLE",
             body = "Remove the ${summary?.unavailableCount ?: 0} entries whose audio files are no longer in your library? " +
-                "Nothing on your device is deleted.",
+                "This includes songs from folders you excluded in Settings: they would be gone from this playlist for good, " +
+                "while leaving them here lets them return when the folder is included again. Nothing on your device is deleted.",
             confirmLabel = "REMOVE",
             onConfirm = {
                 viewModel.removeUnavailable { removed ->
@@ -237,7 +237,7 @@ private fun PlaylistBody(
     val typography = SonaraTheme.typography
     val motion = SonaraTheme.motion
     val density = LocalDensity.current
-    val haptics = LocalHapticFeedback.current
+    val haptics = LocalSonaraHaptics.current
 
     val motion2 = motion
     // Checkboxes: the column opens and closes with this value (read while drawing, not composing).
@@ -365,7 +365,7 @@ private fun PlaylistBody(
                 DragHandle(
                     label = track?.title ?: "unavailable track",
                     onStart = {
-                        if (reorder.start(entry.entryId, shown)) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        if (reorder.start(entry.entryId, shown)) haptics.press()
                     },
                     onDrag = reorder::dragBy,
                     onEnd = {

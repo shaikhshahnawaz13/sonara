@@ -85,6 +85,15 @@ class PlaybackService : MediaSessionService() {
         historyRecorder = PlayHistoryRecorder(exoPlayer, container.database.historyDao(), scope).also { it.start() }
 
         scope.launch { restoreSavedQueue(exoPlayer, store, persist) }
+
+        // "Play next automatically" (Settings > Playback). Off makes the player pause when a track ends instead
+        // of starting the next one; skipping with the buttons is unaffected. Applied on the main thread, which
+        // is where this scope runs, and changed live while a track plays.
+        scope.launch {
+            container.settingsRepository.playbackPrefs.collect { prefs ->
+                exoPlayer.pauseAtEndOfMediaItems = !prefs.autoPlayNext
+            }
+        }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession

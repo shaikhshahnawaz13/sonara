@@ -18,7 +18,9 @@ enum class SonaraDestination(
     Folders(route = "folders", label = "Folders", isPrimary = true),
     Search(route = "search", label = "Search", isPrimary = false),
     Settings(route = "settings", label = "Settings", isPrimary = false),
-    Equalizer(route = "equalizer", label = "Equalizer", isPrimary = false);
+    Equalizer(route = "equalizer", label = "Equalizer", isPrimary = false),
+    ExcludedFolders(route = "settings/excluded-folders", label = "Excluded folders", isPrimary = false),
+    Licenses(route = "settings/licenses", label = "Licences", isPrimary = false);
 
     companion object {
         /** The single NavHost route that hosts the tab pager. */

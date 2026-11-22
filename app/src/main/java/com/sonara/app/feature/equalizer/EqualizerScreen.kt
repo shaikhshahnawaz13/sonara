@@ -22,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,6 +50,7 @@ import com.sonara.app.audio.EqualizerUiState
 import com.sonara.app.core.design.SonaraBorders
 import com.sonara.app.core.design.SonaraSpacing
 import com.sonara.app.core.design.SonaraTheme
+import com.sonara.app.core.design.components.LocalSonaraHaptics
 import com.sonara.app.core.design.components.SonaraButton
 import com.sonara.app.core.design.components.SonaraEmptyState
 import com.sonara.app.core.design.components.SonaraLoadingState
@@ -188,7 +190,16 @@ private fun BandSlider(
 ) {
     val colors = SonaraTheme.colors
     val typography = SonaraTheme.typography
-    val request by rememberUpdatedState(onLevel)
+    val hapticsNow by rememberUpdatedState(LocalSonaraHaptics.current)
+    val currentLevel by rememberUpdatedState(levelMb)
+    val onLevelNow by rememberUpdatedState(onLevel)
+    // A light tick each time the band moves to a new step, so dragging can be felt without looking.
+    val request: (Int) -> Unit = remember {
+        { level ->
+            if (level != currentLevel) hapticsNow.tick()
+            onLevelNow(level)
+        }
+    }
     val barColor = if (active) colors.accent else colors.foregroundMuted
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(SonaraSpacing.s8)) {
         Text(

@@ -187,3 +187,26 @@ All motion numbers live in `core/animation/SonaraMotion.kt` (`MotionTokens`). Co
   throwaway session); no device equalizer means an explanatory message and no controls.
 - **Persistence** (DataStore, no schema change): enabled flag, preset name, band levels; restored when playback attaches.
 - **Needs a phone**: whether it changes the sound, and how each output (speaker, wired, Bluetooth) behaves.
+
+## M6.2 - Settings expansion and navigation polish
+
+- **Settings** (`feature/settings`): Playback (remember queue, play next automatically), Audio (equalizer), Appearance
+  (accent colour, animation level, haptics), Library (rescan, last scan, excluded folders, default Songs sort),
+  Storage (measured sizes, clear artwork cache, clear app cache), Notifications (status, system shortcut), About
+  (version read from the installed package, open-source licences). Settings are DataStore keys; the existing ones are
+  unchanged. Not offered, because Android gives nothing to switch: a gapless toggle, scan depth, a light theme.
+- **Safe rescan**: nothing is applied unless the whole scan succeeded. No audio permission, a query error, a null
+  cursor or an empty answer over a non-empty library (`ScanSafety`) leaves the stored library, the scan marker and the
+  last-scan time untouched, and reports why.
+- **Excluded folders**: a set of MediaStore folder paths (nested folders included). The scan keeps them out of the
+  `tracks` cache only. Playlists, Favourite and history refer to tracks by id and are never edited, so excluded songs
+  show as unavailable and return when the folder is included. The exclusions are part of the scan marker, so changing
+  them always triggers a scan.
+- **Accent colour**: six checked colours (contrast against the dark surfaces and on-accent text is unit-tested). The
+  accent flows from the single theme token, so every screen, the player, the equalizer and the navigation indicator
+  follow it. Launcher icon, splash mark and window colours are static branding and stay lime.
+- **Bottom bar**: always composed, never recreated. A single progress value, animated with the push/pop spec, slides
+  the bar and the mini-player down when a deeper screen opens and back up on return; layout space is released at the
+  start of opening and taken back only once the bar is fully in place. Respects Reduced and Off.
+- **Needs a phone**: how the transition looks and feels, scanning on real libraries, notification-settings shortcut,
+  haptic strength, and the cold-start frame with a non-lime accent. Nothing here has been profiled.

@@ -54,6 +54,7 @@ class AppContainer(context: Context) {
             settings = settingsRepository,
             resolver = appContext.contentResolver,
             onLibraryRescanned = { artworkProvider.clearMisses() },
+            hasAudioAccess = audioPermissionChecker::isGranted,
         )
     }
 

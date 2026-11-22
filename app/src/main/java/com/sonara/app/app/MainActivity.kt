@@ -13,10 +13,10 @@ import com.sonara.app.R
 import com.sonara.app.core.design.SonaraTheme
 import com.sonara.app.core.design.components.ArtworkLoader
 import com.sonara.app.core.design.components.LocalArtworkLoader
+import com.sonara.app.core.design.components.ProvideSonaraHaptics
 import com.sonara.app.core.navigation.SonaraApp
 import com.sonara.app.core.permissions.LocalPermissionActions
 import com.sonara.app.core.permissions.PermissionCoordinator
-import com.sonara.app.data.local.preferences.SonaraSettings
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -52,16 +52,22 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            val settings by container.settingsRepository.settings.collectAsState(initial = SonaraSettings())
-            val motionLevel = resolveMotionLevel(settings.animationIntensity, rememberSystemAnimatorScale())
+            // Null until the saved appearance has been read. Nothing is drawn meanwhile (the window already has the
+            // app's background), so a chosen accent never flashes as the default colour on start.
+            val appearance by container.settingsRepository.appearance.collectAsState(initial = null)
+            val systemScale = rememberSystemAnimatorScale()
+            val current = appearance ?: return@setContent
+            val motionLevel = resolveMotionLevel(current.animationIntensity, systemScale)
 
-            SonaraTheme(motionLevel = motionLevel) {
-                CompositionLocalProvider(
-                    LocalAppContainer provides container,
-                    LocalPermissionActions provides permissions.actions,
-                    LocalArtworkLoader provides artworkLoader,
-                ) {
-                    SonaraApp()
+            SonaraTheme(motionLevel = motionLevel, accent = current.accent) {
+                ProvideSonaraHaptics(enabled = current.hapticsEnabled) {
+                    CompositionLocalProvider(
+                        LocalAppContainer provides container,
+                        LocalPermissionActions provides permissions.actions,
+                        LocalArtworkLoader provides artworkLoader,
+                    ) {
+                        SonaraApp()
+                    }
                 }
             }
         }
