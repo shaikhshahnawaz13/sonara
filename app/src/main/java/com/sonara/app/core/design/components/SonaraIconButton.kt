@@ -1,5 +1,6 @@
 package com.sonara.app.core.design.components
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -34,6 +35,12 @@ fun SonaraIconButton(
     enabled: Boolean = true,
     /** Overrides the default tint, e.g. to show a toggle as on. */
     tint: Color? = null,
+    /**
+     * For controls whose icon or tint shows state (play/pause, shuffle, repeat): the tint changes over the
+     * selection duration and a changed icon compresses and settles. Left off for ordinary buttons so lists
+     * of them carry no extra state.
+     */
+    animateChange: Boolean = false,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
@@ -61,11 +68,19 @@ fun SonaraIconButton(
             ),
         contentAlignment = Alignment.Center,
     ) {
+        val target = tint ?: if (enabled) colors.foreground else colors.foregroundMuted
+        val shown = if (animateChange) {
+            animateColorAsState(target, motion.selectionColorSpec(), label = "iconButtonTint").value
+        } else {
+            target
+        }
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = tint ?: if (enabled) colors.foreground else colors.foregroundMuted,
-            modifier = Modifier.size(SonaraSizes.iconStandard),
+            tint = shown,
+            modifier = Modifier
+                .size(SonaraSizes.iconStandard)
+                .then(if (animateChange) Modifier.iconStateChange(icon) else Modifier),
         )
     }
 }

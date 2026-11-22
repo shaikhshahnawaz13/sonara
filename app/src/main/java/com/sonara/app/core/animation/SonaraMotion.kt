@@ -51,6 +51,22 @@ object MotionTokens {
     /** Queue panel inside the Full Player. */
     const val QUEUE_PANEL_MS = 300
 
+    /** Startup reveal: wordmark wipe, accent rule, then the panel leaves upward. Inside the 1.2-2 s target. */
+    const val STARTUP_MS = 1500
+
+    /** A tap or Back during the reveal plays the rest this many times faster. */
+    const val STARTUP_SKIP_SPEEDUP = 4f
+
+    /** Icon that changes meaning (play/pause, repeat): a brief compression and release. Inside 150-220 ms. */
+    const val ICON_STATE_MS = 180
+    const val ICON_SWAP_FROM_SCALE = 0.78f
+
+    /** Player artwork when the track changes: the old picture leaves and the new one arrives. Inside 250-400 ms. */
+    const val ARTWORK_CHANGE_MS = 320
+
+    /** One pass of the loading bar's moving segment while real work is running. */
+    const val LOADING_SWEEP_MS = 1100
+
     /** Tab travel: one page takes this long when starting from rest. */
     const val TAB_TRAVEL_BASE_MS = 380
 
@@ -171,6 +187,18 @@ class SonaraMotion(val level: MotionLevel) {
 
     /** The queue panel sliding over the Full Player. */
     fun <T> queuePanelSpec(): FiniteAnimationSpec<T> = timed(MotionTokens.QUEUE_PANEL_MS, MotionTokens.StandardEasing)
+
+    /** Total length of the startup reveal; 0 when motion is Off, where the reveal is skipped altogether. */
+    val startupMs: Int get() = durationMs(MotionTokens.STARTUP_MS)
+
+    /** Icon change (play/pause, repeat): compression and release. */
+    fun iconStateSpec(): FiniteAnimationSpec<Float> = timed(MotionTokens.ICON_STATE_MS, MotionTokens.StandardEasing)
+
+    /** The player artwork changing track: a directional slide that keeps the crop. */
+    fun artworkChangeSpec(): FiniteAnimationSpec<Float> = timed(MotionTokens.ARTWORK_CHANGE_MS, MotionTokens.SlideEasing)
+
+    /** The moving segment of the loading bar. Only Full motion sweeps; Reduced and Off hold it still. */
+    val sweepsLoading: Boolean get() = level == MotionLevel.Full
 
     fun <T> selectionColorSpec(): FiniteAnimationSpec<T> =
         timed(MotionTokens.SELECTION_COLOR_MS, MotionTokens.StandardEasing)

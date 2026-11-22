@@ -31,6 +31,7 @@ import com.sonara.app.core.design.SonaraBorders
 import com.sonara.app.core.design.SonaraSizes
 import com.sonara.app.core.design.SonaraTheme
 import com.sonara.app.core.design.components.SonaraIcons
+import com.sonara.app.core.design.components.iconStateChange
 
 /**
  * Play/pause. At the mini-player's size it is a plain icon; as the player opens, an accent outline appears
@@ -69,6 +70,7 @@ internal fun PlayerPlayButton(
             tint = if (buffering) colors.accent else colors.foreground,
             modifier = Modifier
                 .size(SonaraSizes.iconStandard)
+                .iconStateChange(showPause)
                 .graphicsLayer {
                     val scale = 1f + PLAY_ICON_GROWTH * progress()
                     scaleX = scale

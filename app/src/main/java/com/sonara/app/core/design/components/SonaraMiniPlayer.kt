@@ -91,6 +91,7 @@ fun SonaraMiniPlayer(
                 onClick = onTogglePlayPause,
                 enabled = !hidden,
                 tint = if (buffering) colors.accent else null,
+                animateChange = true,
             )
             SonaraIconButton(
                 icon = SonaraIcons.SkipNext,

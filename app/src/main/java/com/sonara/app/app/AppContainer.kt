@@ -34,6 +34,10 @@ import kotlinx.coroutines.flow.collectLatest
 class AppContainer(context: Context) {
     private val appContext = context.applicationContext
 
+    /** Set once the startup reveal has been decided for this process, so rotating or reopening never replays it. */
+    @Volatile
+    var startupRevealDecided: Boolean = false
+
     /** Process-wide scope for work that must outlive any screen or Activity. */
     val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 

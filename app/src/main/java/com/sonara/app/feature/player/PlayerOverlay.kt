@@ -165,7 +165,7 @@ private fun PlayerSurface(
                     val buffering = state.isWaitingToPlay
                     val isFavourite = trackId != null && favouriteIds?.contains(trackId) == true
 
-                    SonaraPlayerArtwork(trackId, Modifier.layoutId(PlayerSlot.Art))
+                    SonaraPlayerArtwork(trackId, Modifier.layoutId(PlayerSlot.Art), queueIndex = state.queueIndex)
                     Text(
                         text = state.title.orEmpty(),
                         style = titleStyle,
@@ -239,6 +239,7 @@ private fun PlayerSurface(
                         contentDescription = if (state.shuffleEnabled) "Shuffle on" else "Shuffle off",
                         onClick = { if (interactive) controller.setShuffle(!state.shuffleEnabled) },
                         tint = if (state.shuffleEnabled) colors.accent else colors.foregroundMuted,
+                        animateChange = true,
                         modifier = Modifier.layoutId(PlayerSlot.Shuffle),
                     )
                     SonaraIconButton(
@@ -246,6 +247,7 @@ private fun PlayerSurface(
                         contentDescription = state.repeat.contentDescription,
                         onClick = { if (interactive) controller.cycleRepeat() },
                         tint = if (state.repeat.isActive) colors.accent else colors.foregroundMuted,
+                        animateChange = true,
                         modifier = Modifier.layoutId(PlayerSlot.Repeat),
                     )
                     PlayerSeekBar(

@@ -210,3 +210,20 @@ All motion numbers live in `core/animation/SonaraMotion.kt` (`MotionTokens`). Co
   start of opening and taken back only once the bar is fully in place. Respects Reduced and Off.
 - **Needs a phone**: how the transition looks and feels, scanning on real libraries, notification-settings shortcut,
   haptic strength, and the cold-start frame with a non-lime accent. Nothing here has been profiled.
+
+## M7 — Motion and Polish
+
+- **Startup reveal**: cold start only (not on rotation). SONARA wordmark wiped in, lime rule, panel slides up and away.
+  1.5 s at Full, 0.9 s at Reduced, skipped at Off. No loading delay: the app is composed underneath. A tap or Back
+  skips it (4× speed).
+- **Micro-interactions**: flat press veil (no ripple, no glow) as the app-wide indication; play/pause, shuffle and
+  repeat icons squash-and-settle on state change, shuffle/repeat tint animates; the full-player artwork slides
+  forward/back with the queue direction.
+- **Shared continuity**: artwork tiles reuse an already-cached bitmap at another size as a stand-in, so opening a
+  detail header shows the same crop immediately instead of an empty frame.
+- **States**: consistent rule on empty/error panels, loading bar sweeps only at Full; search errors now have Retry and
+  no longer crash the results flow.
+- **Reduced motion**: everything above goes through `SonaraMotion` (Full/Reduced/Off plus system animator scale).
+- **Deferred**: shared-element fly between album card and detail (experimental API, untestable here), predictive back,
+  per-row animated selection colour, player expand/collapse timing (left as is).
+- **Needs a phone**: all visual feel; nothing here has been compiled or profiled in the build environment.

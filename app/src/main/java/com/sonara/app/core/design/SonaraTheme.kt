@@ -4,6 +4,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Typography
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -13,6 +14,9 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import com.sonara.app.core.animation.LocalSonaraMotion
 import com.sonara.app.core.animation.MotionLevel
 import com.sonara.app.core.animation.SonaraMotion
+
+/** Strength of the flat veil shown over a pressed row. */
+private const val PRESS_VEIL_ALPHA = 0.10f
 
 private val LocalSonaraColors = staticCompositionLocalOf { SonaraColors() }
 private val LocalSonaraTypography = staticCompositionLocalOf { SonaraTypography() }
@@ -83,6 +87,10 @@ fun SonaraTheme(
         extraLarge = shapes.large,
     ) }
 
+    val indication = remember(colors, motion.isOff) {
+        SonaraPressIndication(veil = colors.foreground.copy(alpha = PRESS_VEIL_ALPHA), instant = motion.isOff)
+    }
+
     CompositionLocalProvider(
         LocalSonaraColors provides colors,
         LocalSonaraTypography provides typography,
@@ -94,11 +102,14 @@ fun SonaraTheme(
             typography = materialTypography,
             shapes = materialShapes,
         ) {
-            Surface(
-                color = colors.background,
-                contentColor = colors.foreground,
-                content = content,
-            )
+            // Provided inside MaterialTheme, which installs its own ripple; this replaces it for the whole app.
+            CompositionLocalProvider(LocalIndication provides indication) {
+                Surface(
+                    color = colors.background,
+                    contentColor = colors.foreground,
+                    content = content,
+                )
+            }
         }
     }
 }

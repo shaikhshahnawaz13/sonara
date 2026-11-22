@@ -16,6 +16,7 @@ import com.sonara.app.feature.common.UiState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -51,6 +52,7 @@ class SearchViewModel(
 ) : ViewModel() {
 
     private val _query = MutableStateFlow("")
+    private val retryTick = MutableStateFlow(0)
     val query: StateFlow<String> = _query
 
     private val sources = combine(
@@ -60,18 +62,29 @@ class SearchViewModel(
     }
 
     /** Null while the query is empty. */
-    val results: StateFlow<UiState<SearchResults?>> = combine(_query.debounce(DEBOUNCE_MS).distinctUntilChanged(), sources) { q, src -> SearchRequest(q, src) }
+    val results: StateFlow<UiState<SearchResults?>> = combine(
+        _query.debounce(DEBOUNCE_MS).distinctUntilChanged(),
+        sources,
+        retryTick,
+    ) { q, src, _ -> SearchRequest(q, src) }
         .mapLatest { request ->
             val q = request.query
             val src = request.sources
-            val state: UiState<SearchResults?> = if (SearchEngine.normalizeQuery(q).isEmpty()) {
-                UiState.Content(null)
-            } else {
-                UiState.Content(
-                    withContext(Dispatchers.Default) {
-                        SearchEngine.search(q, src.songs, src.albums, src.artists, src.playlists, src.folders)
-                    },
-                )
+            val state: UiState<SearchResults?> = try {
+                if (SearchEngine.normalizeQuery(q).isEmpty()) {
+                    UiState.Content(null)
+                } else {
+                    UiState.Content(
+                        withContext(Dispatchers.Default) {
+                            SearchEngine.search(q, src.songs, src.albums, src.artists, src.playlists, src.folders)
+                        },
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Reported for this query only. The next query, or Try again, runs normally.
+                UiState.Error(e.message ?: "Search failed")
             }
             state
         }
@@ -82,6 +95,11 @@ class SearchViewModel(
         .map { it.recentSearches }
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), emptyList())
+
+    /** Runs the current search again after a failure. */
+    fun retry() {
+        retryTick.value += 1
+    }
 
     fun onQueryChange(value: String) {
         _query.value = value.take(SearchEngine.MAX_QUERY_LENGTH)

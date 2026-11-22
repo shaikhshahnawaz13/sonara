@@ -8,7 +8,15 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import com.sonara.app.core.animation.MotionLevel
+import com.sonara.app.core.design.components.StartupReveal
 import com.sonara.app.R
 import com.sonara.app.core.design.SonaraTheme
 import com.sonara.app.core.design.components.ArtworkLoader
@@ -66,7 +74,17 @@ class MainActivity : ComponentActivity() {
                         LocalPermissionActions provides permissions.actions,
                         LocalArtworkLoader provides artworkLoader,
                     ) {
-                        SonaraApp()
+                        // The reveal plays once per process start and never when motion is Off. The app is
+                        // composed underneath from the first frame, so it hides no loading.
+                        var revealing by remember {
+                            val show = !container.startupRevealDecided && motionLevel != MotionLevel.Off
+                            container.startupRevealDecided = true
+                            mutableStateOf(show)
+                        }
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            SonaraApp()
+                            if (revealing) StartupReveal(onFinished = { revealing = false })
+                        }
                     }
                 }
             }

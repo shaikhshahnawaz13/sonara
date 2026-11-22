@@ -81,7 +81,7 @@ fun SearchScreen() {
         }
         when (val state = results) {
             UiState.Loading -> SonaraLoadingState(label = "SEARCHING")
-            is UiState.Error -> SonaraErrorState(state.message, onRetry = null)
+            is UiState.Error -> SonaraErrorState(state.message, onRetry = viewModel::retry)
             is UiState.Content -> {
                 val data = state.data
                 when {
