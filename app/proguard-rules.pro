@@ -1,4 +1,4 @@
-# Used by the "perf" build type only (release minification is configured in M8).
+# Used by the "perf" and "release" build types.
 # Names are kept readable so crash reports stay useful; R8 still removes dead code and optimises.
 -dontobfuscate
 
@@ -8,3 +8,6 @@
 -dontwarn javax.annotation.**
 -dontwarn org.checkerframework.**
 -dontwarn org.codehaus.mojo.animal_sniffer.**
+
+# Readable stack traces from the mapping-free release: keep file names and line numbers.
+-keepattributes SourceFile,LineNumberTable

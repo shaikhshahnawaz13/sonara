@@ -55,6 +55,11 @@ jobs:
         continue-on-error: true
         run: ./gradlew --console=plain :app:assemblePerf
 
+      # The release configuration (R8 + resource shrinking), unsigned, so a broken release build shows up on every push.
+      - name: Build unsigned release APK (R8)
+        continue-on-error: true
+        run: ./gradlew --console=plain :app:assembleRelease
+
       # Lint results are reported but do not gate M1; the gate is tests plus a successful build.
       - name: Lint
         continue-on-error: true

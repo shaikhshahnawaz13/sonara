@@ -1,4 +1,14 @@
+import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+// Release signing secrets are read from keystore.properties (git-ignored, lives only on the build machine) or from
+// SONARA_* environment variables (GitHub Actions secrets). Nothing secret is ever written into the repository.
+val keystoreProps = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+fun signingValue(property: String, env: String): String? =
+    (keystoreProps.getProperty(property) ?: System.getenv(env))?.takeIf { it.isNotBlank() }
 
 plugins {
     alias(libs.plugins.android.application)
@@ -19,10 +29,29 @@ android {
         versionName = "1.0.0-m7"
     }
 
+    signingConfigs {
+        val storeFile = signingValue("storeFile", "SONARA_KEYSTORE_FILE")
+        val storePassword = signingValue("storePassword", "SONARA_KEYSTORE_PASSWORD")
+        val keyAlias = signingValue("keyAlias", "SONARA_KEY_ALIAS")
+        val keyPassword = signingValue("keyPassword", "SONARA_KEY_PASSWORD")
+        // Only defined when every value is present, so a machine without the keystore still configures fine
+        // and simply produces an unsigned release.
+        if (storeFile != null && storePassword != null && keyAlias != null && keyPassword != null) {
+            create("release") {
+                this.storeFile = rootProject.file(storeFile).takeIf { it.exists() } ?: file(storeFile)
+                this.storePassword = storePassword
+                this.keyAlias = keyAlias
+                this.keyPassword = keyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // Minification and signing are configured in M8 (QA and release).
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfigs.findByName("release")?.let { signingConfig = it }
         }
 
         // A debug-signed build with the optimisations of a release build (R8 shrinking and optimisation,

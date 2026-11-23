@@ -14,10 +14,12 @@ milestone by milestone against the SONARA V1.0 master specification.
 | M1.1 | Motion foundation: central tokens, push/pop navigation, travelling nav indicator, reduced motion | Delivered |
 | M1.2 | Tabs as one continuous page strip; indicator driven by the strip | Delivered, verified on device |
 | M2 | Discovery and playback: permissions, MediaStore scan, Room cache, Media3 service, notification and media controls | Delivered, verified on device (Bluetooth disconnect untested) |
-| M3 | Library and browsing: Home, Library, Search, Folders, album/artist/genre/folder details | Delivered, awaiting CI run and on-device check |
-| M4–M8 | Music management, player, advanced features, motion, QA and release | Not started |
+| M3 | Library and browsing: Home, Library, Search, Folders, album/artist/genre/folder details | Delivered, verified on device |
+| M4–M7 | Playlists, player, equalizer, settings, motion and polish | Delivered, verified on device |
+| M6.3 | Local lyrics, sleep timer, History screen (missing from the original M6/M4 scope) | Pending |
+| M8 | QA and release | In progress; final release is not declared until M6.3 is approved |
 
-Screens that are not built yet (Playlists, Settings) are honest placeholders that say which milestone builds them.
+**Known spec gap:** local lyrics, the sleep timer and the History screen were not built in M4/M6. They are scheduled as M6.3; V1.0 is not released until they are done and verified.
 
 ## Requirements
 
