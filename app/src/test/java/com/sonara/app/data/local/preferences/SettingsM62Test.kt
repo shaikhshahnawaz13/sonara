@@ -28,7 +28,7 @@ class SettingsM62Test {
         val repo = SettingsRepository(store())
         runBlocking {
             val s = repo.settings.first()
-            assertEquals(AccentChoice.Lime, s.accent)
+            assertEquals(AccentChoice.Forest, s.accent)
             assertTrue(s.hapticsEnabled)
             assertEquals(AnimationIntensity.Full, s.animationIntensity)
             assertTrue(s.resumePlayback)
@@ -44,13 +44,13 @@ class SettingsM62Test {
     fun accentHapticsAndAutoPlayPersist() {
         val repo = SettingsRepository(store())
         runBlocking {
-            repo.setAccent(AccentChoice.Orange)
+            repo.setAccent(AccentChoice.Cobalt)
             repo.setHapticsEnabled(false)
             repo.setAutoPlayNext(false)
-            assertEquals(AccentChoice.Orange, repo.settings.first().accent)
+            assertEquals(AccentChoice.Cobalt, repo.settings.first().accent)
             assertFalse(repo.settings.first().hapticsEnabled)
             assertFalse(repo.playbackPrefs.first().autoPlayNext)
-            assertEquals(Appearance(AnimationIntensity.Full, AccentChoice.Orange, false), repo.appearance.first())
+            assertEquals(Appearance(AnimationIntensity.Full, AccentChoice.Cobalt, false), repo.appearance.first())
         }
     }
 
@@ -62,7 +62,7 @@ class SettingsM62Test {
             repo.setResumePlayback(false)
             repo.setLibraryScanMarker("7:42")
             repo.addRecentSearch("queen")
-            repo.setAccent(AccentChoice.Pink)
+            repo.setAccent(AccentChoice.Plum)
             repo.excludeFolder("Music/Podcasts")
             repo.setDefaultSort(SongSort.Album)
             val s = repo.settings.first()
@@ -82,10 +82,10 @@ class SettingsM62Test {
                 it[stringPreferencesKey("default_song_sort")] = "by-mood"
             }
             val repo = SettingsRepository(ds)
-            assertEquals(AccentChoice.Lime, repo.settings.first().accent)
+            assertEquals(AccentChoice.Forest, repo.settings.first().accent)
             assertEquals(SongSort.Title, repo.libraryPrefs.first().defaultSort)
         }
-        assertEquals(AccentChoice.Lime, emptyPreferences().toSettings().accent)
+        assertEquals(AccentChoice.Forest, emptyPreferences().toSettings().accent)
     }
 
     @Test

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -29,12 +30,13 @@ fun SonaraWordmark(modifier: Modifier = Modifier) {
             painter = painterResource(R.drawable.ic_logo_mark),
             contentDescription = null,
             modifier = Modifier.height(LogoHeight),
+            colorFilter = ColorFilter.tint(colors.accent),
         )
         Spacer(modifier = Modifier.width(SonaraSpacing.s8))
         Text(
             text = "SONARA",
             style = SonaraTheme.typography.section.copy(
-                fontWeight = FontWeight.ExtraBold,
+                fontWeight = FontWeight.Bold,
                 letterSpacing = 2.sp,
             ),
             color = colors.foreground,

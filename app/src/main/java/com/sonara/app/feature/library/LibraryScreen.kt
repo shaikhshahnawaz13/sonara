@@ -145,7 +145,7 @@ fun LibraryScreen() {
 private fun CategoryTabs(selected: LibraryCategory, onSelect: (LibraryCategory) -> Unit) {
     val colors = SonaraTheme.colors
     val count = LibraryCategory.entries.size
-    // One lime bar travels between the labels. It is read only while placing, so the animation relayouts
+    // One accent bar travels between the labels. It is read only while placing, so the animation relayouts
     // a single small node and recomposes nothing.
     val indicator = animateFloatAsState(
         targetValue = selected.ordinal.toFloat(),

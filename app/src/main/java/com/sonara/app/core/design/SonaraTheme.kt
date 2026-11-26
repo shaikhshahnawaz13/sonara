@@ -5,7 +5,7 @@ import androidx.compose.material3.Shapes
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Typography
 import androidx.compose.foundation.LocalIndication
-import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
@@ -37,7 +37,10 @@ object SonaraTheme {
         @Composable @ReadOnlyComposable get() = LocalSonaraMotion.current
 }
 
-/** SONARA is dark-only (spec section 3). Material 3 is mapped onto the tokens so stock components stay on-brand. */
+/**
+ * SONARA V2 is a light, warm theme and does not follow the system dark mode: the ivory and ink palette is the identity.
+ * Material 3 is mapped onto the tokens so stock components stay on-brand.
+ */
 @Composable
 fun SonaraTheme(
     motionLevel: MotionLevel = MotionLevel.Full,
@@ -52,29 +55,33 @@ fun SonaraTheme(
     val typography = remember { SonaraTypography() }
     val shapes = remember { SonaraShapes() }
 
-    val materialColors = remember(colors) { darkColorScheme(
+    val materialColors = remember(colors) { lightColorScheme(
         primary = colors.accent,
         onPrimary = colors.onAccent,
         secondary = colors.accent,
         onSecondary = colors.onAccent,
+        tertiary = colors.highlight,
+        onTertiary = colors.onHighlight,
         background = colors.background,
         onBackground = colors.foreground,
         surface = colors.surface,
         onSurface = colors.foreground,
         surfaceVariant = colors.surfaceRaised,
         onSurfaceVariant = colors.foregroundMuted,
-        outline = colors.border,
-        outlineVariant = colors.borderMuted,
+        outline = colors.outline,
+        outlineVariant = colors.divider,
         error = colors.danger,
         onError = colors.background,
     ) }
 
     val materialTypography = remember(typography) { Typography(
-        displayLarge = typography.hero,
+        displayLarge = typography.display,
+        displayMedium = typography.hero,
         headlineMedium = typography.screenTitle,
         titleLarge = typography.section,
         titleMedium = typography.trackTitle,
         bodyMedium = typography.body,
+        labelLarge = typography.button,
         labelMedium = typography.metadata,
         labelSmall = typography.microLabel,
     ) }

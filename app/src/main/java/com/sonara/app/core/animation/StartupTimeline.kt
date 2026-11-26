@@ -26,7 +26,7 @@ object StartupTimeline {
     /** 0..1: how much of the wordmark is revealed. */
     fun wipe(progress: Float): Float = phase(progress, 0f, WIPE_END, MotionTokens.SlideEasing)
 
-    /** 0..1: how much of the lime rule is drawn. */
+    /** 0..1: how much of the accent rule is drawn. */
     fun rule(progress: Float): Float = phase(progress, RULE_START, RULE_END, MotionTokens.StandardEasing)
 
     /** 0..1: how far the panel has left upward. */

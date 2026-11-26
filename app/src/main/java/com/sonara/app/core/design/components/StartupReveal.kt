@@ -25,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Size
@@ -45,7 +46,7 @@ import com.sonara.app.core.design.SonaraSpacing
 import com.sonara.app.core.design.SonaraTheme
 
 /**
- * The first moments of a cold start: the SONARA wordmark is wiped in, a lime rule draws under it, and the
+ * The first moments of a cold start: the SONARA wordmark is wiped in, an accent rule draws under it, and the
  * panel leaves upward to show the app. The app is composed underneath from the first frame, so the reveal
  * hides no loading and delays nothing; a tap or Back plays the remainder four times faster.
  *
@@ -94,13 +95,14 @@ fun StartupReveal(onFinished: () -> Unit) {
                 painter = painterResource(R.drawable.ic_logo_mark),
                 contentDescription = null,
                 modifier = Modifier.height(56.dp),
+                colorFilter = ColorFilter.tint(colors.accent),
             )
             Spacer(Modifier.height(SonaraSpacing.s24))
             // The word and its rule share one width, so the rule is exactly as long as the word.
             Column(modifier = Modifier.width(IntrinsicSize.Max)) {
                 Text(
                     text = "SONARA",
-                    style = SonaraTheme.typography.hero.copy(fontWeight = FontWeight.ExtraBold, letterSpacing = 6.sp),
+                    style = SonaraTheme.typography.hero.copy(fontWeight = FontWeight.Bold, letterSpacing = 6.sp),
                     color = colors.foreground,
                     maxLines = 1,
                     modifier = Modifier.drawWithContent {

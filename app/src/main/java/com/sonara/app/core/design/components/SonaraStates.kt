@@ -7,7 +7,6 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,12 +23,16 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import com.sonara.app.core.animation.MotionTokens
 import com.sonara.app.core.design.SonaraBorders
+import com.sonara.app.core.design.SonaraLayout
 import com.sonara.app.core.design.SonaraSpacing
 import com.sonara.app.core.design.SonaraTheme
 import com.sonara.app.core.permissions.AudioAccessState
 import com.sonara.app.core.permissions.LocalPermissionActions
 
-/** Bordered panel shared by the state components. */
+/**
+ * Shared frame of the state components. V2 draws no box: a short heavy rule in the label's colour, the label, then
+ * the explanation and action, set on the page with the standard side margin.
+ */
 @Composable
 private fun StatePanel(
     label: String,
@@ -37,19 +40,14 @@ private fun StatePanel(
     modifier: Modifier,
     content: @Composable () -> Unit,
 ) {
-    val colors = SonaraTheme.colors
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(SonaraSpacing.s16)
-            .background(colors.surface)
-            .border(SonaraBorders.standard, colors.borderMuted, SonaraTheme.shapes.small)
-            .padding(SonaraSpacing.s16),
-        verticalArrangement = Arrangement.spacedBy(SonaraSpacing.s8),
+            .padding(horizontal = SonaraLayout.screenMargin, vertical = SonaraLayout.blockGap),
+        verticalArrangement = Arrangement.spacedBy(SonaraSpacing.s12),
     ) {
-        // The one restrained geometric accent every state shares, in the colour of its label.
-        Box(Modifier.width(SonaraSpacing.s24).height(SonaraBorders.emphasis).background(labelColor))
-        Text(text = label, style = SonaraTheme.typography.microLabel, color = labelColor)
+        Box(Modifier.width(SonaraSpacing.s24).height(SonaraBorders.rule).background(labelColor))
+        Text(text = label, style = SonaraTheme.typography.section, color = labelColor)
         content()
     }
 }
@@ -87,7 +85,7 @@ fun SonaraLoadingState(
 }
 
 /**
- * Shows that real work is running: a lime segment travelling along a hairline track. It carries no
+ * Shows that real work is running: an accent segment travelling along a hairline track. It carries no
  * percentage, because there is none to report. Only Full motion moves it; with Reduced or Off it rests at the
  * start, and it stops with the composable, so it never runs off-screen. The position is read only while drawing.
  */

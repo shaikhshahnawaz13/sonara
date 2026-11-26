@@ -7,9 +7,9 @@ import org.junit.Test
 class AccentChoiceTest {
 
     @Test
-    fun limeIsTheDefaultAndTheBrandColour() {
-        assertEquals(AccentChoice.Lime, AccentChoice.default)
-        assertEquals(SonaraPalette.ACCENT, AccentChoice.Lime.argb)
+    fun forestGreenIsTheDefaultAndThePaletteAccent() {
+        assertEquals(AccentChoice.Forest, AccentChoice.default)
+        assertEquals(SonaraPalette.ACCENT, AccentChoice.Forest.argb)
     }
 
     @Test
@@ -19,16 +19,21 @@ class AccentChoiceTest {
     }
 
     @Test
-    fun unknownOrMissingIdFallsBackToLime() {
-        assertEquals(AccentChoice.Lime, AccentChoice.fromId(null))
-        assertEquals(AccentChoice.Lime, AccentChoice.fromId("magenta-from-the-future"))
+    fun unknownMissingOrV1IdsFallBackToTheDefault() {
+        assertEquals(AccentChoice.Forest, AccentChoice.fromId(null))
+        assertEquals(AccentChoice.Forest, AccentChoice.fromId("magenta-from-the-future"))
+        // Ids V1 may have saved on a phone that is upgraded.
+        listOf("lime", "cyan", "orange", "pink", "ice", "amber").forEach {
+            assertEquals(it, AccentChoice.Forest, AccentChoice.fromId(it))
+        }
     }
 
     @Test
-    fun everyAccentIsReadableAsTextOnTheDarkSurfaces() {
+    fun everyAccentIsReadableAsTextOnTheIvorySurfaces() {
         AccentChoice.entries.forEach {
-            assertTrue("${it.id} on background", ColorContrast.ratio(it.argb, SonaraPalette.BACKGROUND) >= 4.5)
-            assertTrue("${it.id} on raised", ColorContrast.ratio(it.argb, SonaraPalette.SURFACE_RAISED) >= 4.5)
+            listOf(SonaraPalette.BACKGROUND, SonaraPalette.SURFACE, SonaraPalette.SURFACE_RAISED).forEach { surface ->
+                assertTrue("${it.id} on ${surface.toString(16)}", ColorContrast.ratio(it.argb, surface) >= 4.5)
+            }
         }
     }
 
@@ -40,9 +45,10 @@ class AccentChoiceTest {
     }
 
     @Test
-    fun accentsAreDistinctFromTheForegroundText() {
+    fun accentsAreDistinctFromTheTextAndSignalColours() {
         AccentChoice.entries.forEach {
             assertTrue("${it.id} vs foreground", it.argb != SonaraPalette.FOREGROUND)
+            assertTrue("${it.id} vs coral", it.argb != SonaraPalette.HIGHLIGHT && it.argb != SonaraPalette.PROGRESS)
         }
     }
 
@@ -55,8 +61,8 @@ class AccentChoiceTest {
     @Test
     fun onlyTheAccentPairChangesInThePalette() {
         val base = SonaraColors()
-        val cyan = base.withAccent(AccentChoice.Cyan)
-        assertEquals(base.copy(accent = cyan.accent, onAccent = cyan.onAccent), cyan)
-        assertEquals(base, base.withAccent(AccentChoice.Lime))
+        val cobalt = base.withAccent(AccentChoice.Cobalt)
+        assertEquals(base.copy(accent = cobalt.accent, onAccent = cobalt.onAccent), cobalt)
+        assertEquals(base, base.withAccent(AccentChoice.Forest))
     }
 }

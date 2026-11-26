@@ -33,36 +33,55 @@ import com.sonara.app.core.design.SonaraSizes
 import com.sonara.app.core.design.SonaraSpacing
 import com.sonara.app.core.design.SonaraTheme
 
-/** Section title with an optional text action on the right. */
+/**
+ * Section heading. A condensed title with an optional text action on the right. [eyebrow] adds a small upper-case
+ * kicker above it, and [ruled] puts a hairline over the whole heading, which is how V2 starts a section instead of
+ * wrapping it in a box.
+ */
 @Composable
 fun SonaraSectionHeader(
     title: String,
     modifier: Modifier = Modifier,
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
+    eyebrow: String? = null,
+    ruled: Boolean = false,
 ) {
     val colors = SonaraTheme.colors
-    Row(
-        modifier = modifier.fillMaxWidth().padding(top = SonaraSpacing.s16, bottom = SonaraSpacing.s8),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = title,
-            style = SonaraTheme.typography.section,
-            color = colors.foreground,
-            modifier = Modifier.weight(1f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        if (actionLabel != null && onAction != null) {
-            Box(
-                modifier = Modifier
-                    .defaultMinSize(minHeight = SonaraSizes.minTouchTarget)
-                    .clickable(role = Role.Button, onClick = onAction)
-                    .padding(horizontal = SonaraSpacing.s8),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(text = actionLabel, style = SonaraTheme.typography.microLabel, color = colors.accent)
+    Column(modifier = modifier.fillMaxWidth()) {
+        if (ruled) SonaraDivider()
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = SonaraSpacing.s16, bottom = SonaraSpacing.s8),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                if (eyebrow != null) {
+                    Text(
+                        text = eyebrow,
+                        style = SonaraTheme.typography.eyebrow,
+                        color = colors.foregroundMuted,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Text(
+                    text = title,
+                    style = SonaraTheme.typography.section,
+                    color = colors.foreground,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            if (actionLabel != null && onAction != null) {
+                Box(
+                    modifier = Modifier
+                        .defaultMinSize(minHeight = SonaraSizes.minTouchTarget)
+                        .clickable(role = Role.Button, onClick = onAction)
+                        .padding(horizontal = SonaraSpacing.s8),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(text = actionLabel, style = SonaraTheme.typography.microLabel, color = colors.accent)
+                }
             }
         }
     }

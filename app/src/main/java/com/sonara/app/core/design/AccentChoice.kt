@@ -4,24 +4,26 @@ import androidx.compose.ui.graphics.Color
 import kotlin.math.pow
 
 /**
- * The accent colours a person can pick (Settings > Appearance). A controlled set rather than a free picker:
- * every entry has been checked to stay readable as text on the dark surfaces and to carry the dark
- * [onArgb] text on top of it (see AccentChoiceTest). Acid lime stays the default and the brand colour.
+ * The accent colours a person can pick (Settings > Appearance). In V2 the accent is the interactive colour: primary
+ * buttons, text actions and the active destination. It is therefore a controlled set of deep, calm tones rather than
+ * a free picker: every entry has been checked to stay readable as text on the ivory surfaces and to carry the ivory
+ * [onArgb] text on top of it (see AccentChoiceTest). Forest green is the default and the brand colour. Coral is not
+ * offered: it is the signal colour and too light to be text.
  *
  * Plain ARGB longs, like [SonaraPalette], so the set can be unit-tested without Compose types.
+ * Ids saved by V1 ("lime", "cyan", ...) are unknown to V2 and fall back to the default.
  */
 enum class AccentChoice(val id: String, val label: String, val argb: Long, val onArgb: Long = SonaraPalette.ON_ACCENT) {
-    Lime("lime", "Acid lime", SonaraPalette.ACCENT),
-    Cyan("cyan", "Electric cyan", 0xFF00E5FFL),
-    Orange("orange", "Signal orange", 0xFFFF6A00L),
-    Pink("pink", "Hot pink", 0xFFFF3D9AL),
-    Ice("ice", "Ice white", 0xFFBFE3FFL),
-    Amber("amber", "Amber", 0xFFFFB300L);
+    Forest("forest", "Forest green", SonaraPalette.ACCENT),
+    Cobalt("cobalt", "Cobalt", 0xFF1F3F8FL),
+    Brick("brick", "Brick", 0xFF8C3B2AL),
+    Plum("plum", "Plum", 0xFF5E2B63L),
+    Umber("umber", "Umber", 0xFF6A4A1FL);
 
     val color: Color get() = Color(argb)
 
     companion object {
-        val default: AccentChoice = Lime
+        val default: AccentChoice = Forest
 
         /** The saved id's choice; anything missing or unknown (an older or newer build) falls back to the default. */
         fun fromId(id: String?): AccentChoice = entries.firstOrNull { it.id == id } ?: default

@@ -39,8 +39,8 @@ class MainActivity : ComponentActivity() {
 
         // SONARA is always dark, so the system bars always use light icons regardless of the device theme.
         enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+            statusBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
         )
 
         container = (application as SonaraApplication).container

@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
@@ -25,8 +26,10 @@ import com.sonara.app.core.design.SonaraSpacing
 import com.sonara.app.core.design.SonaraTheme
 
 /**
- * Text button in the neo-brutalist style: outlined, or filled lime when [emphasized].
- * Uses the same press compression as [SonaraIconButton], from the central motion tokens.
+ * Text button. Primary ([emphasized]) is a solid forest fill with ivory text: the one strong action on a screen.
+ * Secondary is the default: no fill, a 1dp ink outline and ink text, so several can sit together without competing.
+ * Labels use the condensed button style and are passed upper-case. Uses the same press compression as
+ * [SonaraIconButton], from the central motion tokens.
  */
 @Composable
 fun SonaraButton(
@@ -45,13 +48,21 @@ fun SonaraButton(
         label = "buttonPress",
     )
     val colors = SonaraTheme.colors
-    val container = if (emphasized && enabled) colors.accent else colors.surface
+    val container = when {
+        !enabled -> if (emphasized) colors.disabledContainer else Color.Transparent
+        emphasized -> colors.accent
+        else -> Color.Transparent
+    }
     val content = when {
-        !enabled -> colors.foregroundMuted
+        !enabled -> colors.disabledContent
         emphasized -> colors.onAccent
         else -> colors.foreground
     }
-    val borderColor = if (enabled) colors.border else colors.borderMuted
+    val outline = when {
+        emphasized -> Color.Transparent
+        enabled -> colors.border
+        else -> colors.disabledContent
+    }
 
     Box(
         modifier = modifier
@@ -60,8 +71,8 @@ fun SonaraButton(
                 scaleX = scale
                 scaleY = scale
             }
-            .background(container)
-            .border(SonaraBorders.standard, borderColor, SonaraTheme.shapes.small)
+            .background(container, SonaraTheme.shapes.small)
+            .border(SonaraBorders.hairline, outline, SonaraTheme.shapes.small)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -69,10 +80,10 @@ fun SonaraButton(
                 role = Role.Button,
                 onClick = onClick,
             )
-            .padding(horizontal = SonaraSpacing.s16),
+            .padding(horizontal = SonaraSpacing.s20),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text = label, style = SonaraTheme.typography.microLabel, color = content)
+        Text(text = label, style = SonaraTheme.typography.button, color = content, maxLines = 1)
     }
 }
 

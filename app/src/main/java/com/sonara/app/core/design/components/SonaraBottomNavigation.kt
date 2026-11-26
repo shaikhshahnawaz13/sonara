@@ -45,7 +45,7 @@ private val SelectedIndicatorHeight = SonaraSpacing.s4
  * Custom neo-brutalist bottom navigation: a 2dp top rule, flat cells, and an acid-lime bar over the
  * selected cell. It pads itself for the navigation-bar inset so it never sits under gesture navigation.
  *
- * The lime bar is one element that travels between cells. Its position comes from [indicatorPosition], a
+ * The accent bar is one element that travels between cells. Its position comes from [indicatorPosition], a
  * fractional cell index supplied by the page strip, so the bar moves exactly with the pages. The lambda
  * is read only while placing the bar, so a running animation does not recompose this component.
  * [selectedIndex] drives the label colours and accessibility state.
@@ -100,7 +100,7 @@ fun SonaraBottomNavigation(
     }
 }
 
-/** The lime bar. [position] is a fractional cell index, read only while placing. */
+/** The accent bar. [position] is a fractional cell index, read only while placing. */
 @Composable
 private fun SelectionIndicator(
     position: () -> Float,

@@ -68,7 +68,7 @@ fun SonaraIconButton(
             ),
         contentAlignment = Alignment.Center,
     ) {
-        val target = tint ?: if (enabled) colors.foreground else colors.foregroundMuted
+        val target = tint ?: if (enabled) colors.foreground else colors.disabledContent
         val shown = if (animateChange) {
             animateColorAsState(target, motion.selectionColorSpec(), label = "iconButtonTint").value
         } else {

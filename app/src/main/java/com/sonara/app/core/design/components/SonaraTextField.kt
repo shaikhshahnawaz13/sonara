@@ -32,7 +32,7 @@ import com.sonara.app.core.design.SonaraSpacing
 import com.sonara.app.core.design.SonaraTheme
 
 /**
- * Bordered single-line text input. The border is lime while focused and red while [errorText] is shown;
+ * Bordered single-line text input. The border is the accent while focused and red while [errorText] is shown;
  * the error appears under the field in words, never by colour alone.
  */
 @Composable
