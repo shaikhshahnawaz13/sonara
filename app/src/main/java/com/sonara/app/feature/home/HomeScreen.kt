@@ -32,7 +32,7 @@ import com.sonara.app.core.design.components.SonaraLoadingState
 import com.sonara.app.core.design.components.SonaraPermissionPrompt
 import com.sonara.app.core.design.components.SonaraSectionHeader
 import com.sonara.app.core.design.components.SonaraTile
-import com.sonara.app.core.design.components.SonaraTopBar
+import com.sonara.app.core.design.components.SonaraScreenHeader
 import com.sonara.app.core.design.components.SonaraTrackRow
 import com.sonara.app.core.design.components.SonaraWordmark
 import com.sonara.app.core.design.components.plural
@@ -70,7 +70,7 @@ fun HomeScreen() {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        SonaraTopBar(
+        SonaraScreenHeader(
             title = {
                 Column {
                     SonaraWordmark()

@@ -25,7 +25,7 @@ import com.sonara.app.core.design.components.SonaraMenuAction
 import com.sonara.app.core.design.components.SonaraOverflowMenu
 import com.sonara.app.core.design.components.SonaraPermissionPrompt
 import com.sonara.app.core.design.components.SonaraSectionHeader
-import com.sonara.app.core.design.components.SonaraTopBar
+import com.sonara.app.core.design.components.SonaraScreenHeader
 import com.sonara.app.core.navigation.LocalSonaraNavigator
 import com.sonara.app.core.permissions.AudioAccessState
 import com.sonara.app.data.local.database.FolderPermissionState
@@ -57,9 +57,10 @@ fun FoldersScreen() {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        SonaraTopBar(
+        SonaraScreenHeader(
             title = "FOLDERS",
             actions = {
+                SonaraIconButton(SonaraIcons.Search, "Search", onClick = navigator::openSearch)
                 SonaraIconButton(SonaraIcons.Add, "Add a folder", onClick = { picker.launch(null) })
             },
         )

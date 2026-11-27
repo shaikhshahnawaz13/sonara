@@ -73,3 +73,10 @@ New: `SonaraDivider`, `SonaraProgressBar` (progress read at draw time, no recomp
 
 Navigation shell, Home, Library, Player, Playlists and Settings are not redesigned yet. Until M1.2 to M1.7 reach them,
 those screens show the V2 palette and type on their V1 layout and will look transitional.
+
+## App shell (M2)
+
+- **Bottom navigation:** 56dp, text-only cells, 1dp `divider` hairline on top. The selected label is ink, the others muted. One 2dp x 24dp accent tick travels between cells, driven by the page strip's fractional position (read at layout time, no recomposition). It pads itself for the navigation-bar inset.
+- **Top-level header:** `SonaraScreenHeader`, fixed 80dp, 20dp start margin, optional eyebrow above the title, one hairline below. Search is the first action and the screen's own action (Settings, Rescan, Add) is last. The last icon's visible edge lands on the 20dp margin (`actionEndInset` = margin minus icon inset).
+- **Pushed screens:** `SonaraTopBar`, same margins and the same hairline (`SonaraDivider`).
+- **Mini-player:** geometry unchanged. It stacks directly above the nav; `BottomChromeGeometry` now counts a 1dp nav rule.

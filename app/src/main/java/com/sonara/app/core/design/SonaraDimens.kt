@@ -45,6 +45,15 @@ object SonaraLayout {
     val sectionGap = 40.dp
     /** Minimum height of a list row (also a 48dp touch target plus padding). */
     val rowMinHeight = 56.dp
+    /** Height of a top-level screen header. Fixed, so every tab's title sits on the same line. */
+    val headerHeight = 80.dp
+    /** How far a 24dp icon sits inside its 48dp button. */
+    val iconButtonInset = (SonaraSizes.minTouchTarget - SonaraSizes.iconStandard) / 2
+    /**
+     * End padding of a header's action row. The icon's visible edge, not the button's, is what lines up with the
+     * screen margin, so the last action is inset by the margin minus the icon's own padding.
+     */
+    val actionEndInset = screenMargin - iconButtonInset
 }
 
 /** Artwork edge lengths. Artwork is always square and is not decorated with borders or shadows. */
@@ -65,7 +74,7 @@ object SonaraSizes {
     val iconSecondary = 20.dp
     val iconPrimary = 28.dp
     val topBarMinHeight = 56.dp
-    val bottomNavHeight = 64.dp
+    val bottomNavHeight = 56.dp
 }
 
 /** Near-square geometry: radii stay between 0 and 6dp, so nothing reads as a rounded card. */

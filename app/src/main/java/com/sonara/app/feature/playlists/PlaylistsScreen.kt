@@ -26,7 +26,7 @@ import com.sonara.app.core.design.components.SonaraLoadingState
 import com.sonara.app.core.design.components.SonaraMenuAction
 import com.sonara.app.core.design.components.SonaraNameDialog
 import com.sonara.app.core.design.components.SonaraPlaylistRow
-import com.sonara.app.core.design.components.SonaraTopBar
+import com.sonara.app.core.design.components.SonaraScreenHeader
 import com.sonara.app.core.design.components.plural
 import com.sonara.app.core.navigation.LocalSonaraNavigator
 import com.sonara.app.data.model.PlaylistSummary
@@ -91,9 +91,11 @@ fun PlaylistsScreen() {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        SonaraTopBar(
+        SonaraScreenHeader(
             title = "PLAYLISTS",
+            eyebrow = (state as? UiState.Content)?.data?.let { plural(it.size, "playlist") },
             actions = {
+                SonaraIconButton(SonaraIcons.Search, "Search", onClick = navigator::openSearch)
                 SonaraIconButton(
                     icon = SonaraIcons.Add,
                     contentDescription = "Create playlist",

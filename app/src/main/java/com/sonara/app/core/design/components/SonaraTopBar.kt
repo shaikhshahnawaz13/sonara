@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
@@ -17,7 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
-import com.sonara.app.core.design.SonaraBorders
+import com.sonara.app.core.design.SonaraLayout
 import com.sonara.app.core.design.SonaraSizes
 import com.sonara.app.core.design.SonaraSpacing
 import com.sonara.app.core.design.SonaraTheme
@@ -39,7 +38,10 @@ fun SonaraTopBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = SonaraSizes.topBarMinHeight)
-                .padding(horizontal = SonaraSpacing.s16),
+                .padding(
+                    start = if (onBack != null) SonaraLayout.actionEndInset else SonaraLayout.screenMargin,
+                    end = SonaraLayout.actionEndInset,
+                ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (onBack != null) {
@@ -48,17 +50,12 @@ fun SonaraTopBar(
                     contentDescription = "Back",
                     onClick = onBack,
                 )
-                Spacer(modifier = Modifier.width(SonaraSpacing.s8))
+                Spacer(modifier = Modifier.width(SonaraSpacing.s4))
             }
             Box(modifier = Modifier.weight(1f)) { title() }
             actions()
         }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(SonaraBorders.standard)
-                .background(colors.borderMuted),
-        )
+        SonaraDivider()
     }
 }
 

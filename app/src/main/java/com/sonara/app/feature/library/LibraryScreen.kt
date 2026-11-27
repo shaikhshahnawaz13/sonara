@@ -58,7 +58,7 @@ import com.sonara.app.core.design.components.SonaraIconButton
 import com.sonara.app.core.design.components.SonaraListRow
 import com.sonara.app.core.design.components.SonaraLoadingState
 import com.sonara.app.core.design.components.SonaraPermissionPrompt
-import com.sonara.app.core.design.components.SonaraTopBar
+import com.sonara.app.core.design.components.SonaraScreenHeader
 import com.sonara.app.core.design.components.SonaraTrackRow
 import com.sonara.app.core.design.components.plural
 import com.sonara.app.core.navigation.LibraryCategory
@@ -93,7 +93,7 @@ fun LibraryScreen() {
     val albumsState = rememberLazyGridState()
 
     Column(modifier = Modifier.fillMaxSize()) {
-        SonaraTopBar(
+        SonaraScreenHeader(
             title = "LIBRARY",
             actions = {
                 SonaraIconButton(SonaraIcons.Search, "Search", onClick = navigator::openSearch)

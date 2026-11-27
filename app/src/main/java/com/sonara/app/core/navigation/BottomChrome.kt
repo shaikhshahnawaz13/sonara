@@ -111,7 +111,7 @@ internal fun SonaraBottomChrome(
         val loose = Constraints(minWidth = 0, maxWidth = constraints.maxWidth, minHeight = 0, maxHeight = constraints.maxHeight)
         val miniP = measurables.first { it.layoutId == MINI }.measure(loose)
         val navP = measurables.first { it.layoutId == NAV }.measure(loose)
-        val navContent = (SonaraBorders.emphasis.roundToPx() + SonaraSizes.bottomNavHeight.roundToPx()).coerceAtMost(navP.height)
+        val navContent = (SonaraBorders.hairline.roundToPx() + SonaraSizes.bottomNavHeight.roundToPx()).coerceAtMost(navP.height)
         val height = BottomChromeGeometry.height(reserved, miniP.height, navP.height, navContent)
         layout(constraints.maxWidth, height) {
             val p = state.progress.value

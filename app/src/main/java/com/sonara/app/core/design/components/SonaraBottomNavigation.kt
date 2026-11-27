@@ -39,13 +39,16 @@ import kotlin.math.roundToInt
 /** A bottom-navigation entry. [key] is an opaque identifier handed back to the caller on selection. */
 data class SonaraNavItem(val key: String, val label: String)
 
-private val SelectedIndicatorHeight = SonaraSpacing.s4
+/** The indicator is a short ink-weight tick, not a cell-wide block: 2dp thick and 24dp (one icon) long. */
+private val SelectedIndicatorHeight = SonaraBorders.rule
+private val SelectedIndicatorWidth = SonaraSizes.iconStandard
 
 /**
- * Custom neo-brutalist bottom navigation: a 2dp top rule, flat cells, and an acid-lime bar over the
- * selected cell. It pads itself for the navigation-bar inset so it never sits under gesture navigation.
+ * Editorial bottom navigation: a 1dp hairline, flat text-only cells, and a short accent tick centred over the
+ * selected label. The selected label is ink, the others muted. It pads itself for the navigation-bar inset so
+ * it never sits under gesture navigation.
  *
- * The accent bar is one element that travels between cells. Its position comes from [indicatorPosition], a
+ * The accent tick is one element that travels between cells. Its position comes from [indicatorPosition], a
  * fractional cell index supplied by the page strip, so the bar moves exactly with the pages. The lambda
  * is read only while placing the bar, so a running animation does not recompose this component.
  * [selectedIndex] drives the label colours and accessibility state.
@@ -68,8 +71,8 @@ fun SonaraBottomNavigation(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(SonaraBorders.emphasis)
-                .background(colors.border),
+                .height(SonaraBorders.hairline)
+                .background(colors.divider),
         )
         Box(
             modifier = Modifier
@@ -100,7 +103,7 @@ fun SonaraBottomNavigation(
     }
 }
 
-/** The accent bar. [position] is a fractional cell index, read only while placing. */
+/** The accent tick. [position] is a fractional cell index, read only while placing. */
 @Composable
 private fun SelectionIndicator(
     position: () -> Float,
@@ -111,11 +114,13 @@ private fun SelectionIndicator(
         modifier = modifier
             .layout { measurable, constraints ->
                 val cellWidth = constraints.maxWidth.toFloat() / count
+                val tickWidth = SelectedIndicatorWidth.roundToPx()
                 val placeable = measurable.measure(
-                    Constraints.fixed(cellWidth.roundToInt(), SelectedIndicatorHeight.roundToPx()),
+                    Constraints.fixed(tickWidth, SelectedIndicatorHeight.roundToPx()),
                 )
+                val inset = (cellWidth - tickWidth) / 2f
                 layout(constraints.maxWidth, placeable.height) {
-                    placeable.placeRelative((position() * cellWidth).roundToInt(), 0)
+                    placeable.placeRelative((position() * cellWidth + inset).roundToInt(), 0)
                 }
             }
             .background(SonaraTheme.colors.accent),
@@ -132,7 +137,7 @@ private fun RowScope.NavCell(
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val labelColor by animateColorAsState(
-        targetValue = if (selected) colors.accent else colors.foregroundMuted,
+        targetValue = if (selected) colors.foreground else colors.foregroundMuted,
         animationSpec = SonaraTheme.motion.selectionColorSpec<Color>(),
         label = "navLabelColor",
     )

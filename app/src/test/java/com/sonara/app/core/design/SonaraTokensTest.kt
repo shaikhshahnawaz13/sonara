@@ -83,6 +83,18 @@ class SonaraTokensTest {
     }
 
     @Test
+    fun shellLayoutTokensSitOnTheFourDpGrid() {
+        assertEquals(0f, SonaraLayout.headerHeight.value % 4f, 0f)
+        assertEquals(0f, SonaraSizes.bottomNavHeight.value % 4f, 0f)
+        assertEquals(12.dp, SonaraLayout.iconButtonInset)
+        assertEquals(8.dp, SonaraLayout.actionEndInset)
+        // The last action's visible icon edge lands exactly on the screen margin.
+        assertEquals(SonaraLayout.screenMargin, SonaraLayout.actionEndInset + SonaraLayout.iconButtonInset)
+        assertTrue(SonaraSizes.bottomNavHeight >= 56.dp)
+        assertTrue(SonaraLayout.headerHeight >= SonaraSizes.minTouchTarget + SonaraLayout.sectionGap / 2)
+    }
+
+    @Test
     fun bordersAndTouchTargetsMatchSpec() {
         assertEquals(1.dp, SonaraBorders.hairline)
         assertEquals(2.dp, SonaraBorders.rule)
